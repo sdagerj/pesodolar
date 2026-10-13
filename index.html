@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PesoDólar · TRM y tasas Colombia</title>
+<meta name="description" content="TRM oficial en vivo, forwards COP/USD, tasas de referencia y proyecciones por regla de Taylor">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#C49B3C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PesoDólar">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0A0F18;--panel:#111925;--p2:#182233;--p3:#1F2D42;
+  --gold:#C49B3C;--gdim:rgba(196,155,60,.14);--gline:rgba(196,155,60,.4);
+  --grn:#2A9960;--gbg:rgba(42,153,96,.12);
+  --red:#C04040;--rbg:rgba(192,64,64,.12);
+  --blu:#5A8CB8;--bbg:rgba(90,140,184,.12);
+  --t1:#D8D2C6;--t2:#7A8C9E;--t3:#3E5060;--bdr:#1E2E42;
+  --mono:"SF Mono",ui-monospace,"Fira Code",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+:root[data-theme="light"]{
+  --bg:#EDECE6;--panel:#F8F8F2;--p2:#FFF;--p3:#F0EFEA;
+  --gold:#8A6A1C;--gdim:rgba(138,106,28,.10);--gline:rgba(138,106,28,.4);
+  --grn:#166840;--gbg:rgba(22,104,64,.08);
+  --red:#8A2828;--rbg:rgba(138,40,40,.08);
+  --blu:#2C5F8A;--bbg:rgba(44,95,138,.09);
+  --t1:#18222E;--t2:#3C4E62;--t3:#8A9BAC;--bdr:#D8D4CC;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:15px;
+  line-height:1.5;min-height:100vh;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+
+header{background:var(--panel);border-bottom:1px solid var(--bdr);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 0;position:sticky;top:0;z-index:50}
+.hbar{display:flex;align-items:center;justify-content:space-between;padding-bottom:10px}
+.logo{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--gold);
+  display:flex;align-items:center;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--t3);flex-shrink:0}
+.dot.live{background:var(--grn);animation:pulse 2.5s ease-in-out infinite}
+.dot.err{background:var(--red)}
+.dot.warn{background:var(--gold)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hbtns{display:flex;gap:6px}
+.ibtn{background:var(--p3);border:1px solid var(--bdr);border-radius:7px;
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  color:var(--t2);cursor:pointer;font-size:15px;transition:.15s}
+.ibtn:active{transform:scale(.93)}
+.ibtn:hover{color:var(--t1);border-color:var(--gline)}
+.ibtn.spin svg{animation:rot 1s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.tb{flex:1 0 auto;padding:9px 13px;font-family:var(--mono);font-size:11px;
+  color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;
+  white-space:nowrap;text-align:center;transition:.15s;background:none;
+  border-top:none;border-left:none;border-right:none}
+.tb:hover{color:var(--t1)}
+.tb.on{color:var(--gold);border-bottom-color:var(--gold)}
+.tb .badge{display:inline-block;min-width:15px;height:15px;line-height:15px;
+  border-radius:8px;background:var(--red);color:#fff;font-size:9px;margin-left:4px}
+
+.wrap{max-width:880px;margin:0 auto;padding:16px}
+.pane{display:none}.pane.on{display:block}
+
+.hero{background:var(--panel);border:1px solid var(--bdr);border-radius:14px;
+  padding:22px 20px;margin-bottom:14px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0 0 auto;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.5}
+.eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--t3);margin-bottom:8px}
+.trm{font-family:var(--mono);font-size:clamp(36px,11vw,54px);font-weight:700;
+  color:var(--gold);letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.trm.sm{font-size:26px;color:var(--t3)}
+.unit{font-size:15px;color:var(--t2);margin-left:5px}
+.hrow{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;
+  font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.pill.up{background:var(--rbg);color:var(--red)}
+.pill.dn{background:var(--gbg);color:var(--grn)}
+.pill.n{background:var(--p3);color:var(--t2)}
+.meta{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:12px;
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.src{padding:2px 7px;background:var(--p3);border-radius:4px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--bdr);border-radius:12px;padding:14px 16px}
+.cl{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t3);margin-bottom:7px}
+.cv{font-family:var(--mono);font-size:21px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.cs{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:6px;line-height:1.5}
+
+.stitle{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t3);display:flex;align-items:center;gap:8px;margin:18px 0 10px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--bdr)}
+.box{background:var(--panel);border:1px solid var(--bdr);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+canvas{display:block;width:100%;touch-action:pan-y}
+.sfoot{display:flex;justify-content:space-between;margin-top:8px;
+  font-family:var(--mono);font-size:10px;color:var(--t3)}
+
+.tbl{background:var(--panel);border:1px solid var(--bdr);border-radius:12px;overflow:hidden}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--t3);text-align:right;padding:9px 12px;border-bottom:1px solid var(--bdr);
+  font-weight:400;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:11px 12px;font-family:var(--mono);font-size:13px;
+  font-variant-numeric:tabular-nums;text-align:right;border-bottom:1px solid var(--bdr)}
+td:first-child{text-align:left;color:var(--t2);font-size:12px}
+tr:last-child td{border-bottom:none}
+.tbl.ancha table{min-width:540px}
+.tbl.ancha th,.tbl.ancha td{padding:9px 10px;font-size:12px;white-space:nowrap}
+.tbl.ancha td:first-child,.tbl.ancha th:first-child{
+  position:sticky;left:0;background:var(--panel);z-index:1}
+.scrollhint{font-family:var(--mono);font-size:9px;color:var(--t3);text-align:right;margin-top:5px}
+.bar{display:inline-block;width:28px;height:3px;background:var(--bdr);
+  border-radius:2px;overflow:hidden;vertical-align:middle;margin-left:6px}
+.bar i{display:block;height:100%;background:var(--gold)}
+
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.f label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--t3);display:block;margin-bottom:5px}
+.f input{width:100%;background:var(--p2);border:1px solid var(--bdr);border-radius:9px;
+  padding:11px 13px;color:var(--t1);font-family:var(--mono);font-size:15px;
+  font-variant-numeric:tabular-nums;outline:none;transition:.15s;-moz-appearance:textfield}
+.f input::-webkit-outer-spin-button,.f input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.f input:focus{border-color:var(--gold);background:var(--panel)}
+.fhint{font-family:var(--mono);font-size:9px;color:var(--t3);margin-top:4px;line-height:1.5}
+
+.note{background:var(--p2);border:1px solid var(--bdr);border-left:3px solid var(--gold);
+  border-radius:0 10px 10px 0;padding:12px 14px;font-family:var(--mono);
+  font-size:11px;color:var(--t2);line-height:1.85;margin-bottom:12px}
+.note b{color:var(--gold);font-weight:600}
+.note.blu{border-left-color:var(--blu)}.note.blu b{color:var(--blu)}
+.note.red{border-left-color:var(--red);background:var(--rbg)}.note.red b{color:var(--red)}
+
+.btn{background:var(--gold);border:none;border-radius:10px;padding:12px 16px;
+  color:#000;font-family:var(--mono);font-size:12px;font-weight:600;cursor:pointer;
+  transition:.15s;width:100%}
+.btn:active{transform:scale(.98);opacity:.9}
+.btn.ghost{background:transparent;border:1px solid var(--bdr);color:var(--t2)}
+.btn.sm{width:auto;padding:8px 13px;font-size:11px}
+
+.banner{border-radius:10px;padding:12px 14px;font-family:var(--mono);font-size:11px;
+  margin-bottom:14px;line-height:1.75;display:none}
+.banner.show{display:block}
+.banner.warn{background:var(--gdim);border:1px solid var(--gline);color:var(--gold)}
+.banner.err{background:var(--rbg);border:1px solid var(--red);color:var(--red)}
+.banner.ok{background:var(--gbg);border:1px solid var(--grn);color:var(--grn)}
+.banner b{font-weight:700}
+
+.seg{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap}
+.sg{padding:6px 12px;border-radius:7px;font-family:var(--mono);font-size:11px;
+  cursor:pointer;background:transparent;border:1px solid var(--bdr);color:var(--t2);transition:.15s}
+.sg.on{background:var(--gdim);border-color:var(--gline);color:var(--gold)}
+
+.prow{display:grid;grid-template-columns:1fr 92px 74px 28px;gap:8px;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--bdr)}
+.prow:last-of-type{border-bottom:none}
+.pname{font-family:var(--mono);font-size:12px;color:var(--t1);line-height:1.35;min-width:0}
+.pname small{display:block;color:var(--t3);font-size:9px;margin-top:2px}
+.pname a{color:var(--t3);text-decoration:none;border-bottom:1px solid var(--bdr)}
+.pname a:hover{color:var(--gold)}
+.pin{background:var(--p2);border:1px solid var(--bdr);border-radius:7px;padding:8px 9px;
+  color:var(--t1);font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;
+  outline:none;width:100%;-moz-appearance:textfield}
+.pin::-webkit-outer-spin-button,.pin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.pin:focus{border-color:var(--gold)}
+.pin.ro{background:transparent;border-color:transparent;color:var(--gold);
+  font-weight:600;padding-left:0;text-align:right}
+.pdel{background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;padding:4px}
+.pdel:hover{color:var(--red)}
+.phdr{display:grid;grid-template-columns:1fr 92px 74px 28px;gap:8px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--t3);padding-bottom:8px;border-bottom:1px solid var(--bdr)}
+.phdr span:nth-child(2),.phdr span:nth-child(3){text-align:right}
+
+/* diagnóstico */
+.drow{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--bdr)}
+.drow:last-child{border-bottom:none}
+.dico{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:1px}
+.dico.ok{background:var(--gbg);color:var(--grn)}
+.dico.err{background:var(--rbg);color:var(--red)}
+.dico.wait{background:var(--p3);color:var(--t3)}
+.dico.warn{background:var(--gdim);color:var(--gold)}
+.dtxt{flex:1;min-width:0}
+.dname{font-family:var(--mono);font-size:12px;color:var(--t1)}
+.ddet{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px;
+  line-height:1.6;word-break:break-word}
+.ddet code{background:var(--p3);padding:1px 5px;border-radius:3px;color:var(--t1)}
+
+footer{text-align:center;padding:22px 16px 30px;font-family:var(--mono);
+  font-size:10px;color:var(--t3);line-height:1.9}
+footer a{color:var(--t2);text-decoration:none;border-bottom:1px solid var(--bdr)}
+.skel{background:linear-gradient(90deg,var(--p2) 25%,var(--p3) 50%,var(--p2) 75%);
+  background-size:200% 100%;animation:sh 1.4s infinite;border-radius:6px;
+  display:inline-block;height:1em;width:100px}
+@keyframes sh{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hbar">
+    <div class="logo"><span class="dot" id="dot"></span>PesoDólar</div>
+    <div class="hbtns">
+      <button class="ibtn" id="refresh" aria-label="Actualizar">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 11-3-6.7M21 3v6h-6"/></svg>
+      </button>
+      <button class="ibtn" id="theme" aria-label="Tema">☾</button>
+    </div>
+  </div>
+  <nav>
+    <button class="tb on" data-p="trm">TRM &amp; Forwards</button>
+    <button class="tb" data-p="tasas">Tasas &amp; Usura</button>
+    <button class="tb" data-p="proy">Proyecciones TRM</button>
+    <button class="tb" data-p="diag">Diagnóstico<span class="badge" id="diag-badge" style="display:none">!</span></button>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="banner" id="banner-file"></div>
+  <div class="banner" id="banner"></div>
+
+  <!-- ═══════ 1 · TRM ═══════ -->
+  <div class="pane on" id="p-trm">
+    <div class="hero">
+      <div class="eyebrow">TRM Oficial · Banco de la República</div>
+      <div><span class="trm sm" id="trm">Consultando…</span><span class="unit" id="unit"></span></div>
+      <div class="hrow" id="hrow"></div>
+      <div class="meta" id="meta"><span class="skel"></span></div>
+    </div>
+
+    <div class="grid">
+      <div class="card"><div class="cl">Variación día</div>
+        <div class="cv" id="m-day">—</div><div class="cs" id="m-day-s">vs. día hábil anterior</div></div>
+      <div class="card"><div class="cl">Devaluación año</div>
+        <div class="cv" id="m-ytd">—</div><div class="cs" id="m-ytd-s">desde apertura</div></div>
+      <div class="card"><div class="cl">Mínimo 90 días</div>
+        <div class="cv" id="m-min">—</div><div class="cs" id="m-min-s">—</div></div>
+      <div class="card"><div class="cl">Máximo 90 días</div>
+        <div class="cv" id="m-max">—</div><div class="cs" id="m-max-s">—</div></div>
+    </div>
+
+    <div class="box">
+      <div class="stitle" style="margin-top:0">TRM últimos 90 días</div>
+      <canvas id="chart" height="150"></canvas>
+      <div class="sfoot"><span id="c-from">—</span><span id="c-to">—</span></div>
+    </div>
+
+    <div class="stitle">Ingresar TRM manualmente</div>
+    <div class="fields">
+      <div class="f"><label>TRM (COP por USD)</label>
+        <input type="number" id="mtrm" placeholder="4210.50" step="0.01" inputmode="decimal">
+        <div class="fhint">Úsalo si la consulta automática no funciona. Queda guardada.</div></div>
+      <div class="f" style="display:flex;align-items:flex-end">
+        <button class="btn" id="msave">Guardar</button></div>
+    </div>
+
+    <div class="stitle">Forward COP/USD — costo de cobertura</div>
+    <div class="fields">
+      <div class="f"><label>Tasa COP · IBR % E.A.</label>
+        <input type="number" id="rcop" step="0.01" inputmode="decimal">
+        <div class="fhint" id="rcop-h"></div></div>
+      <div class="f"><label>Tasa USD · SOFR % N.A.</label>
+        <input type="number" id="rusd" step="0.01" inputmode="decimal">
+        <div class="fhint" id="rusd-h"></div></div>
+    </div>
+    <div class="tbl"><div class="tscroll"><table>
+      <thead><tr><th>Plazo</th><th>Forward</th><th>Puntos</th><th>Dev. impl.</th></tr></thead>
+      <tbody id="fwd"></tbody>
+    </table></div></div>
+    <div class="note" style="margin-top:12px">
+      <b>F = S × (1 + r<sub>COP</sub>·T/360) / (1 + r<sub>USD</sub>·T/360)</b><br>
+      El forward <b>no</b> pronostica la TRM futura: es el precio de cubrirse hoy y
+      refleja el diferencial de tasas entre Colombia y EE.UU.
+    </div>
+  </div>
+
+  <!-- ═══════ 2 · TASAS ═══════ -->
+  <div class="pane" id="p-tasas">
+    <div id="estado"></div>
+
+    <div class="grid">
+      <div class="card"><div class="cl">Tasa BanRep</div>
+        <div class="cv" style="color:var(--gold)" id="k-banrep">—</div>
+        <div class="cs" id="k-banrep-s">—</div></div>
+      <div class="card"><div class="cl">IBR overnight</div>
+        <div class="cv" id="k-ibr">—</div><div class="cs" id="k-ibr-s">—</div></div>
+      <div class="card"><div class="cl">DTF · promedio CDT 90 días</div>
+        <div class="cv" style="color:var(--blu)" id="k-dtf">—</div>
+        <div class="cs" id="k-dtf-s">—</div></div>
+      <div class="card"><div class="cl">Inflación anual</div>
+        <div class="cv" id="k-infl">—</div><div class="cs" id="k-infl-s">—</div></div>
+      <div class="card"><div class="cl">Interés Bancario Corriente</div>
+        <div class="cv" id="k-ibc">—</div><div class="cs" id="k-ibc-s">—</div></div>
+      <div class="card"><div class="cl">Usura vigente</div>
+        <div class="cv" style="color:var(--red)" id="k-usura">—</div>
+        <div class="cs" id="k-usura-s">—</div></div>
+    </div>
+
+    <div class="note blu">
+      <b>La DTF desaparece el 1 de enero de 2027.</b> Desde esa fecha toda referencia a
+      DTF en contratos pasa automáticamente al <b>IBR a 3 meses</b>. Si tienes créditos
+      o CDT indexados a DTF, ese es el cambio que hay que mirar.<br><br>
+      Por eso, cuando la app no logra traer la DTF publicada, la <b>estima desde el
+      IBR</b> y lo rotula. Si la norma las declara equivalentes desde 2027, el IBR es
+      la mejor aproximación mientras tanto.
+    </div>
+
+    <div class="stitle">Editar tasas vigentes</div>
+    <div class="fields">
+      <div class="f"><label>Tasa BanRep % E.A.</label>
+        <input type="number" id="i-banrep" step="0.25" inputmode="decimal"></div>
+      <div class="f"><label>IBR overnight % E.A.</label>
+        <input type="number" id="i-ibr" step="0.01" inputmode="decimal"></div>
+      <div class="f"><label>DTF % E.A.</label>
+        <input type="number" id="i-dtf" step="0.01" inputmode="decimal"></div>
+      <div class="f"><label>Inflación anual %</label>
+        <input type="number" id="i-infl" step="0.01" inputmode="decimal"></div>
+      <div class="f"><label>IBC % E.A.</label>
+        <input type="number" id="i-ibc" step="0.01" inputmode="decimal"></div>
+      <div class="f"><label>Usura % E.A.</label>
+        <input type="number" id="i-usura" step="0.01" inputmode="decimal"></div>
+      <div class="f"><label>Fecha de corte</label>
+        <input type="text" id="i-corte" placeholder="ago 2026"></div>
+    </div>
+    <button class="btn ghost sm" id="reset-tasas">Restaurar valores de referencia</button>
+
+    <div class="stitle">Modelo de proyección · regla de Taylor</div>
+    <div class="box">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div><div class="cl">Nivel que implica la regla, hoy</div>
+          <div class="cv" style="font-size:26px;color:var(--gold)" id="taylor-hoy">—</div></div>
+        <div style="text-align:right"><div class="cl">Postura actual</div>
+          <div class="cv" style="font-size:17px" id="taylor-brecha">—</div></div>
+      </div>
+      <div class="fhint" style="margin-top:9px;line-height:1.75" id="taylor-lectura">—</div>
+    </div>
+
+    <div class="seg" id="seg-esc">
+      <button class="sg on" data-e="base">Base</button>
+      <button class="sg" data-e="persistente">Inflación persistente</button>
+      <button class="sg" data-e="desacel">Desaceleración</button>
+      <button class="sg" data-e="choque">Choque inflacionario</button>
+    </div>
+
+    <div class="fields">
+      <div class="f"><label>Tasa real neutral r* %</label>
+        <input type="number" id="i-rstar" step="0.25" inputmode="decimal">
+        <div class="fhint">Tasa real que ni estimula ni frena</div></div>
+      <div class="f"><label>Meta de inflación %</label>
+        <input type="number" id="i-meta" step="0.25" inputmode="decimal">
+        <div class="fhint">BanRep: 3% ± 1pp</div></div>
+      <div class="f"><label>Brecha del producto %</label>
+        <input type="number" id="i-brecha" step="0.25" inputmode="decimal">
+        <div class="fhint">Negativa = economía bajo capacidad</div></div>
+      <div class="f"><label>Peso inflación (a)</label>
+        <input type="number" id="i-coefa" step="0.1" inputmode="decimal">
+        <div class="fhint">Taylor original: 0,5</div></div>
+      <div class="f"><label>Peso producto (b)</label>
+        <input type="number" id="i-coefb" step="0.1" inputmode="decimal">
+        <div class="fhint">Taylor original: 0,5</div></div>
+      <div class="f"><label>Suavizamiento ρ</label>
+        <input type="number" id="i-rho" step="0.05" min="0" max="0.95" inputmode="decimal">
+        <div class="fhint">0 = salta al objetivo de una vez</div></div>
+      <div class="f"><label>Persistencia inflación λ</label>
+        <input type="number" id="i-lambda" step="0.05" min="0" max="0.99" inputmode="decimal">
+        <div class="fhint">Qué tan lento converge a la meta</div></div>
+      <div class="f"><label>Horizonte (trimestres)</label>
+        <input type="number" id="i-tri" step="1" min="4" max="12"></div>
+    </div>
+
+    <div class="box">
+      <div class="stitle" style="margin-top:0">Tasa de política e inflación proyectadas</div>
+      <canvas id="ch-banrep" height="155"></canvas>
+      <div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--gold)">━ tasa BanRep</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--blu)">━ inflación</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">┈ nivel Taylor</span>
+      </div>
+    </div>
+    <div class="box">
+      <div class="stitle" style="margin-top:0">Usura proyectada</div>
+      <canvas id="ch-usura" height="140"></canvas>
+    </div>
+    <div class="tbl ancha"><div class="tscroll"><table>
+      <thead><tr><th>Trim.</th><th>Inflación</th><th>Taylor</th><th>BanRep</th><th>DTF</th><th>IBC</th><th>Usura</th></tr></thead>
+      <tbody id="tb-proy"></tbody>
+    </table></div></div>
+    <div class="scrollhint">desliza la tabla para ver todas las columnas →</div>
+
+    <div class="note blu" style="margin-top:12px">
+      <b>De dónde sale cada número.</b><br><br>
+      <b>1 · El nivel que pide la regla.</b><br>
+      i* = r* + π + a(π − meta) + b·brecha<br>
+      El banco sube cuando la inflación excede la meta y baja cuando la economía
+      está por debajo de su capacidad.<br><br>
+      <b>2 · La inflación converge.</b><br>
+      π siguiente = meta + (π − meta)·λ<br><br>
+      <b>3 · La tasa se mueve gradual.</b><br>
+      i siguiente = ρ·i + (1−ρ)·i*<br>
+      Los bancos centrales no saltan al nivel objetivo.<br><br>
+      <b>4 · Traspaso al sistema financiero.</b><br>
+      DTF, IBC y usura conservan el <b>margen que hoy se observa</b> frente a la tasa
+      de política. Se calibran con tus propios datos vigentes, no con coeficientes
+      inventados. La usura es IBC × 1,5, que es regla legal.<br><br>
+      Este modelo <b>funciona sin conexión</b>: solo usa las tasas guardadas.
+    </div>
+  </div>
+
+  <!-- ═══════ 3 · PROYECCIONES TRM ═══════ -->
+  <div class="pane" id="p-proy">
+    <div class="note">
+      <b>Por qué esta tabla la llenas tú.</b> Los bancos y centros de estudio publican
+      sus proyecciones en informes PDF mensuales, sin API abierta. Aquí tienes las
+      fuentes con su enlace: abres, lees el número y lo anotas. Queda guardado y se
+      compara solo contra el forward de mercado.
+    </div>
+
+    <div class="stitle">Cuadro comparativo</div>
+    <div class="box">
+      <div class="phdr"><span>Fuente</span><span>TRM proy.</span><span>vs. hoy</span><span></span></div>
+      <div id="prows"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn sm ghost" id="addrow">+ Agregar fuente</button>
+        <button class="btn sm ghost" id="clearrows">Limpiar valores</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="stitle" style="margin-top:0">Comparación visual</div>
+      <canvas id="ch-proy" height="170"></canvas>
+      <div class="sfoot"><span>Línea dorada = TRM de hoy</span><span id="proy-n">—</span></div>
+    </div>
+
+    <div class="stitle">Dónde encontrar cada proyección</div>
+    <div class="tbl"><div class="tscroll"><table>
+      <thead><tr><th>Fuente</th><th>Qué publica</th><th>Cada cuánto</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://www.banrep.gov.co/es/contenidos/encuestas-expectativas-economicas" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none">BanRep · EME</a></td>
+            <td style="text-align:left;color:var(--t2);font-size:11px">Consenso de analistas: TRM, inflación, PIB, tasa</td><td>Mensual</td></tr>
+        <tr><td><a href="https://www.fedesarrollo.org.co/encuestas/encuesta-de-opinion-financiera" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none">Fedesarrollo · EOF</a></td>
+            <td style="text-align:left;color:var(--t2);font-size:11px">Encuesta de Opinión Financiera</td><td>Mensual</td></tr>
+        <tr><td><a href="https://www.grupobancolombia.com/investigaciones-economicas" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none">Bancolombia</a></td>
+            <td style="text-align:left;color:var(--t2);font-size:11px">Investigaciones Económicas, proyección TRM</td><td>Mensual</td></tr>
+        <tr><td><a href="https://www.corficolombiana.com/investigaciones-economicas" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none">Corficolombiana</a></td>
+            <td style="text-align:left;color:var(--t2);font-size:11px">Research macro y cambiario</td><td>Mensual</td></tr>
+        <tr><td><a href="https://www.banrep.gov.co/es/publicaciones-investigaciones/informe-politica-monetaria" target="_blank" rel="noopener" style="color:var(--gold);text-decoration:none">BanRep · IPM</a></td>
+            <td style="text-align:left;color:var(--t2);font-size:11px">Informe de Política Monetaria</td><td>Trimestral</td></tr>
+      </tbody>
+    </table></div></div>
+
+    <div class="note blu" style="margin-top:12px">
+      <b>Forward ≠ pronóstico.</b> La primera fila se calcula sola desde la TRM y las
+      tasas reales: es la senda que implica el mercado por arbitraje. Que un banco
+      proyecte por debajo del forward significa que espera una TRM mejor que la que
+      puedes asegurar hoy con una cobertura.
+    </div>
+  </div>
+
+  <!-- ═══════ 4 · DIAGNÓSTICO ═══════ -->
+  <div class="pane" id="p-diag">
+    <div class="note">
+      <b>Para qué sirve esta pestaña.</b> Prueba una por una las fuentes de datos y te
+      dice exactamente qué falla y por qué. Si la app no se actualiza, abre esto, toca
+      <b>Probar todo</b> y copia el resultado — ahí está la causa.
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn sm" id="run-diag">Probar todo</button>
+      <button class="btn sm ghost" id="copy-diag">Copiar resultado</button>
+    </div>
+
+    <div class="stitle">Entorno</div>
+    <div class="box" id="diag-env"></div>
+
+    <div class="stitle">Fuentes de datos</div>
+    <div class="box" id="diag-src">
+      <div class="ddet" style="color:var(--t3)">Toca «Probar todo» para ejecutar las pruebas.</div>
+    </div>
+
+    <div class="stitle">Almacenamiento</div>
+    <div class="box" id="diag-ls"></div>
+  </div>
+</div>
+
+<footer>
+  TRM: <a href="https://www.datos.gov.co/Econom-a-y-Finanzas/Tasa-de-Cambio-Representativa-del-Mercado-TRM/32sa-8pi3" target="_blank" rel="noopener">Datos Abiertos Colombia</a> · Banco de la República<br>
+  Usura e IBC: <a href="https://www.superfinanciera.gov.co" target="_blank" rel="noopener">Superintendencia Financiera</a> · SOFR: <a href="https://www.newyorkfed.org/markets/reference-rates/sofr" target="_blank" rel="noopener">NY Fed</a><br>
+  Herramienta informativa. No es asesoría financiera.
+</footer>
+
+<script>
+"use strict";
+
+/* ════════ CONFIGURACIÓN ════════ */
+const SOCRATA_TRM = "https://www.datos.gov.co/resource/32sa-8pi3.json";
+const NYFED_SOFR  = "https://markets.newyorkfed.org/api/rates/sofr/last/1.json";
+const RESPALDO_FX = "https://open.er-api.com/v6/latest/USD";
+const IBR_SETS = ["ev8i-uzwt", "dj9f-u3if", "g4wt-pqf5"];
+const DTF_SETS = ["gtwv-4pxq"];
+
+const TENORS = [["3 meses",91],["6 meses",182],["12 meses",365],["18 meses",548]];
+const K = { trm:"pesodolar.trm.v3", tasas:"pesodolar.tasas.v3",
+            proy:"pesodolar.proy.v3", theme:"pesodolar.theme" };
+
+/* Valores de referencia con su fecha de corte real. La antigüedad se cuenta
+   desde REF_TS, no desde que abres la app, para que un dato viejo se note. */
+const REF = { banrep:12.00, ibr:11.90, dtf:null, ibc:19.77,
+              usura:29.66, infl:6.14, sofr:3.62, corte:"ago 2026" };
+const REF_TS  = Date.parse("2026-08-11T00:00:00Z");
+const REF_TSS = { banrep:REF_TS, ibr:REF_TS, ibc:REF_TS, usura:REF_TS, infl:REF_TS };
+
+const VENCE = { banrep:50, ibr:10, dtf:12, usura:35, ibc:35, infl:35 };
+const ETIQ  = { banrep:"Tasa BanRep", ibr:"IBR overnight", dtf:"DTF",
+                usura:"Usura", ibc:"IBC", infl:"Inflación anual" };
+const ENLACE = {
+  banrep:"https://www.banrep.gov.co/es/noticias/comunicados-junta-directiva",
+  ibr:"https://www.banrep.gov.co/es/estadisticas/indicador-bancario-referencia-ibr",
+  dtf:"https://www.banrep.gov.co/es/estadisticas/tasas-captacion-semanales-y-mensuales",
+  usura:"https://www.superfinanciera.gov.co/publicaciones/10829/sala-de-prensacomunicados-de-prensa-interes-bancario-corriente-10829/",
+  ibc:"https://www.superfinanciera.gov.co/publicaciones/10829/sala-de-prensacomunicados-de-prensa-interes-bancario-corriente-10829/",
+  infl:"https://www.dane.gov.co/index.php/estadisticas-por-tema/precios-y-costos/indice-de-precios-al-consumidor-ipc"
+};
+
+const PARAMS_DEF = { rstar:2.0, meta:3.0, brecha:0, a:0.5, b:0.5, rho:0.75, lambda:0.85, tri:8 };
+const ESC = {
+  base:        { rstar:2.0, meta:3.0, brecha:0,    a:0.5, b:0.5, rho:0.75, lambda:0.85 },
+  persistente: { rstar:2.0, meta:3.0, brecha:0,    a:0.5, b:0.5, rho:0.80, lambda:0.95 },
+  desacel:     { rstar:1.5, meta:3.0, brecha:-1.5, a:0.5, b:0.5, rho:0.70, lambda:0.80 },
+  choque:      { rstar:2.5, meta:3.0, brecha:0.5,  a:0.8, b:0.3, rho:0.75, lambda:0.95 },
+};
+const ESC_TXT = {
+  base:        "Convergencia ordenada: la inflación cede a ritmo normal y la economía opera en su capacidad.",
+  persistente: "La inflación baja despacio (λ alto). La regla exige mantener la tasa alta más tiempo.",
+  desacel:     "Brecha negativa: la economía opera bajo su capacidad, lo que justifica recortar más rápido.",
+  choque:      "Nuevo brote inflacionario: más peso a la inflación (a=0,8) y neutral más alta. La regla pide subir.",
+};
+
+/* ════════ UTILIDADES ════════ */
+const $ = id => document.getElementById(id);
+const nf  = n => Number(n).toLocaleString("es-CO",{minimumFractionDigits:2,maximumFractionDigits:2});
+const nf0 = n => Number(n).toLocaleString("es-CO",{maximumFractionDigits:0});
+const num = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+const pct = v => v == null || !Number.isFinite(v) ? "—" : v.toFixed(2) + "%";
+
+const ESLOCAL = location.protocol === "file:";
+
+const ls = {
+  ok:true,
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }
+             catch(e){ this.ok=false; return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ this.ok=false; } }
+};
+
+/* ════════ ESTADO ════════ */
+let S = { trm:null, fecha:null, prev:null, base:null, hist:[], fuente:null, stale:false };
+let T = {};
+let P = [];
+let esc = "base";
+let DIAG = [];
+
+/* ════════ TEMA ════════ */
+let theme = ls.get(K.theme, null) || (matchMedia("(prefers-color-scheme:dark)").matches ? "dark" : "light");
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", theme);
+  $("theme").textContent = theme === "dark" ? "☀" : "☾";
+  const m = document.querySelector('meta[name=theme-color]');
+  if(m) m.setAttribute("content", theme === "dark" ? "#0A0F18" : "#EDECE6");
+  dibujarTodo();
+}
+$("theme").onclick = () => { theme = theme === "dark" ? "light" : "dark"; ls.set(K.theme, theme); applyTheme(); };
+
+/* ════════ PESTAÑAS ════════ */
+document.querySelectorAll(".tb").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tb").forEach(x => x.classList.remove("on"));
+  document.querySelectorAll(".pane").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+  const pane = $("p-" + b.dataset.p);
+  if(pane) pane.classList.add("on");
+  setTimeout(dibujarTodo, 40);
+});
+
+/* ════════ RED ════════ */
+async function jget(url, ms = 12000){
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort("timeout"), ms);
+  try{
+    const r = await fetch(url, { signal:ac.signal, headers:{Accept:"application/json"}, cache:"no-store" });
+    if(!r.ok) throw new Error("HTTP " + r.status + " " + r.statusText);
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* Describe un fallo de red en términos entendibles, no en jerga del navegador */
+function explicar(e){
+  const m = String(e && e.message || e || "");
+  if(ESLOCAL) return "el navegador bloquea las consultas al abrir el archivo directamente (file://)";
+  if(/abort|timeout/i.test(m)) return "la fuente no respondió a tiempo";
+  if(/Failed to fetch|NetworkError|load failed/i.test(m))
+    return "no se pudo conectar: sin internet, o la fuente no permite consultas desde el navegador (CORS)";
+  if(/HTTP 4/.test(m)) return "la fuente rechazó la consulta (" + m + ")";
+  if(/HTTP 5/.test(m)) return "la fuente tuvo un error interno (" + m + ")";
+  return m || "error desconocido";
+}
+
+/* Lee una serie sin conocer sus columnas: busca una con forma de fecha y otra
+   numérica con nombre plausible, y exige que el valor caiga en rango. */
+function leerSerie(rows, rango){
+  if(!Array.isArray(rows) || !rows.length || typeof rows[0] !== "object") return null;
+  const claves = Object.keys(rows[0]);
+  const esFecha = v => /^\d{4}-\d{2}-\d{2}/.test(String(v));
+  const kFecha = claves.find(k => /fecha|vigencia|periodo|corte/i.test(k) && esFecha(rows[0][k]))
+              || claves.find(k => esFecha(rows[0][k]));
+  if(!kFecha) return null;
+  const nums = claves.filter(k => k !== kFecha && Number.isFinite(parseFloat(rows[0][k])));
+  if(!nums.length) return null;
+  const kValor = nums.find(k => /overnight|nocturn/i.test(k))
+              || nums.find(k => /valor|tasa|ibr|efectiv|nominal/i.test(k)) || nums[0];
+  const norm = rows.map(r => ({ fecha:String(r[kFecha]).slice(0,10), valor:parseFloat(r[kValor]) }))
+                   .filter(r => esFecha(r.fecha) && Number.isFinite(r.valor))
+                   .sort((a,b) => a.fecha < b.fecha ? -1 : 1);
+  if(!norm.length) return null;
+  const u = norm[norm.length-1];
+  if(u.valor < rango[0] || u.valor > rango[1]) return null;
+  return { valor:u.valor, fecha:u.fecha, campo:kValor, n:norm.length };
+}
+
+/* ── TRM ────────────────────────────────────────────────────────────
+   Una sola petición, sin filtro $where. Pedir los últimos 400 registros
+   ordenados de más reciente a más antiguo cubre año y medio de días
+   hábiles, y de ahí salen el dato de hoy, el anterior, el histórico y la
+   apertura del año. Menos partes móviles, menos formas de fallar. */
+async function traerTRM(){
+  const url = SOCRATA_TRM + "?$order=" + encodeURIComponent("vigenciadesde DESC") + "&$limit=400";
+  const rows = await jget(url, 15000);
+  if(!Array.isArray(rows) || !rows.length) throw new Error("la fuente respondió sin registros");
+
+  const norm = rows.map(r => ({ fecha:String(r.vigenciadesde || "").slice(0,10), valor:parseFloat(r.valor) }))
+                   .filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.fecha) && Number.isFinite(r.valor))
+                   .sort((a,b) => a.fecha < b.fecha ? -1 : 1);
+  if(!norm.length) throw new Error("los registros no traen fecha y valor reconocibles");
+
+  const last = norm[norm.length-1];
+  const anio = last.fecha.slice(0,4);
+  const delAnio = norm.filter(r => r.fecha.slice(0,4) === anio);
+  const base = delAnio.length ? { valor:delAnio[0].valor, fecha:delAnio[0].fecha } : null;
+
+  return { trm:last.valor, fecha:last.fecha,
+           prev: norm.length > 1 ? norm[norm.length-2].valor : null,
+           hist: norm.slice(-90), base, fuente:"TRM oficial · BanRep", total:norm.length };
+}
+
+async function traerRespaldo(){
+  const d = await jget(RESPALDO_FX, 10000);
+  const v = d && d.rates && d.rates.COP;
+  if(!Number.isFinite(v)) throw new Error("la respuesta no trae cotización de COP");
+  return { trm:v, fecha:new Date().toISOString().slice(0,10), prev:null, base:null,
+           hist:[], fuente:"Mercado spot (respaldo)" };
+}
+
+async function traerSOFR(){
+  const d = await jget(NYFED_SOFR, 10000);
+  const r = d && d.refRates && d.refRates[0];
+  const v = r && parseFloat(r.percentRate);
+  if(!Number.isFinite(v)) throw new Error("la respuesta no trae percentRate");
+  return { valor:v, fecha:r.effectiveDate || new Date().toISOString().slice(0,10) };
+}
+
+async function traerDeSets(sets, rango){
+  let ultimo = null;
+  for(const id of sets){
+    try{
+      const s = leerSerie(await jget("https://www.datos.gov.co/resource/" + id + ".json?$limit=40", 10000), rango);
+      if(s) return { ...s, dataset:id };
+      ultimo = new Error("el dataset " + id + " respondió pero no se reconoció su estructura");
+    }catch(e){ ultimo = e; }
+  }
+  throw ultimo || new Error("ningún dataset respondió");
+}
+
+/* datos.json: lo escribe el job de GitHub Actions junto a la app. Al ser del
+   mismo origen no hay CORS de por medio y llega todo en una petición. */
+async function traerDatosJSON(){
+  if(ESLOCAL) throw new Error("no aplica al abrir el archivo directamente");
+  const d = await jget("datos.json?t=" + Date.now(), 8000);
+  if(!d || !d.tasas) throw new Error("el archivo no tiene el campo tasas");
+  return d;
+}
+
+/* ════════ CARGA ════════ */
+async function cargar({silencioso=false} = {}){
+  const btn = $("refresh");
+  btn.classList.add("spin");
+  $("dot").className = "dot";
+  if(!silencioso) aviso("");
+
+  /* 1 · TRM: oficial, luego respaldo, luego lo guardado */
+  let ok = false, errores = [];
+  for(const f of [traerTRM, traerRespaldo]){
+    try{ S = Object.assign({}, await f(), {stale:false}); ok = true; break; }
+    catch(e){ errores.push(explicar(e)); }
+  }
+
+  if(ok){
+    ls.set(K.trm, { ...S, hist:(S.hist||[]).slice(-90), ts:Date.now() });
+    $("dot").className = "dot live";
+    pintarTRM();
+    if(S.fuente.includes("respaldo"))
+      aviso("warn","La fuente oficial no respondió. Estás viendo cotización de mercado, que puede diferir de la TRM certificada.");
+  } else {
+    const c = ls.get(K.trm, null);
+    if(c && c.trm){
+      S = Object.assign({}, c, {stale:true});
+      $("dot").className = "dot warn";
+      pintarTRM();
+      const d = Math.floor((Date.now() - (c.ts||0))/864e5);
+      aviso("warn","No se pudo consultar la TRM" + (d>0 ? `, muestro la guardada hace ${d} día${d>1?"s":""}` : ", muestro la última guardada")
+        + ". Causa: " + errores[0] + ". Mira la pestaña Diagnóstico.");
+    } else {
+      $("dot").className = "dot err";
+      $("trm").textContent = "Sin dato";
+      $("trm").className = "trm sm";
+      $("meta").innerHTML = "";
+      aviso("err","No se pudo obtener la TRM. Causa: " + errores[0]
+        + ". Puedes escribirla a mano más abajo, o abrir la pestaña Diagnóstico.");
+    }
+  }
+
+  /* 2 · Tasas: primero el archivo propio, si no las fuentes sueltas */
+  let viaJSON = false;
+  try{
+    const d = await traerDatosJSON();
+    viaJSON = aplicarDatosJSON(d);
+  }catch(e){ /* sin datos.json se sigue por fuentes sueltas */ }
+
+  if(!viaJSON){
+    traerSOFR().then(r => {
+      T.sofr = r.valor; T.sofrFecha = r.fecha; T.sofrAuto = true;
+      guardarTasas(); pintarTasas();
+    }).catch(()=>{});
+    traerDeSets(IBR_SETS, [0.5,30]).then(r => {
+      T.ibr = r.valor; T.ibrFecha = r.fecha; T.ibrAuto = true;
+      T.ts = T.ts || {}; T.ts.ibr = Date.parse(r.fecha + "T00:00:00Z") || Date.now();
+      guardarTasas(); pintarTasas();
+    }).catch(()=>{});
+    traerDeSets(DTF_SETS, [0.5,30]).then(r => {
+      T.dtf = r.valor; T.dtfFecha = r.fecha; T.dtfAuto = true;
+      T.ts = T.ts || {}; T.ts.dtf = Date.parse(r.fecha + "T00:00:00Z") || Date.now();
+      guardarTasas(); pintarTasas();
+    }).catch(()=>{});
+  }
+
+  btn.classList.remove("spin");
+}
+
+function aplicarDatosJSON(d){
+  const t = d.tasas || {};
+  let n = 0;
+  const poner = (k, campo, rango) => {
+    const r = t[k];
+    if(!r || !Number.isFinite(r.valor) || r.valor < rango[0] || r.valor > rango[1]) return;
+    T[campo] = r.valor;
+    T[campo + "Auto"] = true;
+    T[campo + "Fecha"] = r.fecha;
+    T.ts = T.ts || {};
+    T.ts[campo] = Date.parse(r.fecha + "T00:00:00Z") || Date.now();
+    n++;
+  };
+  poner("ibr","ibr",[0.5,30]);
+  poner("dtf","dtf",[0.5,30]);
+  poner("usura","usura",[10,60]);
+  poner("ibc","ibc",[5,45]);
+  poner("sofr","sofr",[0,15]);
+  if(n){ guardarTasas(); pintarTasas(); }
+  return n > 0;
+}
+
+function aviso(tipo, msg){
+  const b = $("banner");
+  if(!tipo){ b.className = "banner"; return; }
+  b.className = "banner show " + tipo;
+  b.textContent = msg;
+}
+
+/* ════════ CÁLCULO ════════ */
+function forward(spot, rcop, rusd, dias, base=360){
+  const f = spot * (1 + rcop/100*dias/base) / (1 + rusd/100*dias/base);
+  return { f, puntos:f-spot, dev:(f/spot-1)*(base/dias)*100 };
+}
+
+/* DTF efectiva: observada, o estimada desde el IBR. La norma declara que
+   desde 2027 la DTF pasa al IBR a 3 meses, así que el IBR es la mejor
+   aproximación disponible mientras tanto. */
+function dtfEfectiva(){
+  if(Number.isFinite(T.dtf)) return { v:T.dtf, origen:"observado" };
+  if(Number.isFinite(T.ibr)) return { v:T.ibr, origen:"estimado_ibr" };
+  if(Number.isFinite(T.banrep)) return { v:T.banrep, origen:"estimado_politica" };
+  return { v:null, origen:"sin_dato" };
+}
+
+function paramsModelo(){
+  const g = (id, d) => { const v = num($(id) && $(id).value); return v == null ? d : v; };
+  return {
+    rstar:  g("i-rstar",  PARAMS_DEF.rstar),
+    meta:   g("i-meta",   PARAMS_DEF.meta),
+    brecha: g("i-brecha", PARAMS_DEF.brecha),
+    a:      g("i-coefa",  PARAMS_DEF.a),
+    b:      g("i-coefb",  PARAMS_DEF.b),
+    rho:    Math.min(0.95, Math.max(0, g("i-rho", PARAMS_DEF.rho))),
+    lambda: Math.min(0.99, Math.max(0, g("i-lambda", PARAMS_DEF.lambda))),
+    tri:    Math.max(4, Math.min(12, Math.round(g("i-tri", PARAMS_DEF.tri)))),
+  };
+}
+
+function taylor(pi, p){ return p.rstar + pi + p.a*(pi - p.meta) + p.b*p.brecha; }
+
+/* Senda de tasas. No depende de la TRM ni de internet: corre siempre con
+   las tasas guardadas, por eso las proyecciones nunca quedan en blanco. */
+function senda(){
+  const p = paramsModelo();
+  const hoy = new Date();
+  const de = dtfEfectiva();
+
+  const banrep = Number.isFinite(T.banrep) ? T.banrep : REF.banrep;
+  const infl   = Number.isFinite(T.infl)   ? T.infl   : REF.infl;
+  const ibc    = Number.isFinite(T.ibc)    ? T.ibc    : REF.ibc;
+
+  const mDTF = (de.v == null ? 0 : de.v - banrep);
+  const mIBC = ibc - banrep;
+
+  let pi = infl, i = banrep;
+  const out = [];
+  for(let k = 0; k < p.tri; k++){
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() + k*3, 1);
+    const et = "Q" + (Math.floor(d.getMonth()/3) + 1) + " " + String(d.getFullYear()).slice(2);
+    const iEstrella = taylor(pi, p);
+    if(k > 0){
+      i  = p.rho*i + (1 - p.rho)*iEstrella;
+      pi = p.meta + (pi - p.meta)*p.lambda;
+    }
+    const ibcK = Math.max(0, i + mIBC);
+    out.push({ et, pi:Math.max(-5,pi), taylor:iEstrella, br:Math.max(0,i),
+               dtf:Math.max(0, i + mDTF), ibc:ibcK, usura:ibcK * 1.5 });
+  }
+  return out;
+}
+
+/* ════════ PINTAR · TRM ════════ */
+function pintarTRM(){
+  const { trm, fecha, prev, hist } = S;
+
+  if(!Number.isFinite(trm)){
+    $("trm").textContent = "Sin dato";
+    $("trm").className = "trm sm";
+    $("unit").textContent = "";
+  } else {
+    $("trm").textContent = nf(trm);
+    $("trm").className = "trm";
+    $("unit").textContent = "COP/USD";
+  }
+
+  const hrow = $("hrow"); hrow.innerHTML = "";
+  if(Number.isFinite(trm) && Number.isFinite(prev)){
+    const d = trm - prev, p = (trm/prev - 1)*100, up = d > 0;
+    hrow.innerHTML = `<span class="pill ${up?"up":"dn"}">${up?"▲":"▼"} ${nf(Math.abs(d))} · ${Math.abs(p).toFixed(2)}%</span>`;
+    $("m-day").textContent = (up?"+":"−") + nf(Math.abs(d));
+    $("m-day").style.color = up ? "var(--red)" : "var(--grn)";
+    $("m-day-s").textContent = (up?"+":"−") + Math.abs(p).toFixed(2) + "% vs. anterior";
+  } else {
+    hrow.innerHTML = `<span class="pill n">Sin comparativo previo</span>`;
+    $("m-day").textContent = "—"; $("m-day").style.color = "";
+  }
+
+  const ft = fecha ? new Date(fecha+"T12:00:00").toLocaleDateString("es-CO",
+    {weekday:"long", day:"numeric", month:"long", year:"numeric"}) : "—";
+  $("meta").innerHTML = S.fuente
+    ? `<span class="src">${S.fuente}</span><span>Vigente ${ft}</span>`
+      + (S.stale ? `<span style="color:var(--gold)">· dato guardado</span>` : "")
+    : "";
+
+  if(S.base && Number.isFinite(S.base.valor) && Number.isFinite(trm)){
+    const y = (trm/S.base.valor - 1)*100;
+    $("m-ytd").textContent = (y>=0?"+":"") + y.toFixed(2) + "%";
+    $("m-ytd").style.color = y >= 0 ? "var(--red)" : "var(--grn)";
+    $("m-ytd-s").textContent = "desde " + nf0(S.base.valor) + " · " + S.base.fecha;
+  } else { $("m-ytd").textContent = "—"; $("m-ytd-s").textContent = "sin apertura del año"; }
+
+  if(hist && hist.length > 1){
+    const v = hist.map(h => h.valor), mn = Math.min(...v), mx = Math.max(...v);
+    $("m-min").textContent = nf0(mn);
+    $("m-min-s").textContent = (hist.find(h => h.valor === mn)||{}).fecha || "";
+    $("m-max").textContent = nf0(mx);
+    $("m-max-s").textContent = (hist.find(h => h.valor === mx)||{}).fecha || "";
+    $("c-from").textContent = hist[0].fecha;
+    $("c-to").textContent = hist[hist.length-1].fecha;
+  } else {
+    $("m-min").textContent = $("m-max").textContent = "—";
+    $("m-min-s").textContent = $("m-max-s").textContent = "requiere histórico";
+    $("c-from").textContent = $("c-to").textContent = "—";
+  }
+
+  pintarForward();
+  pintarProyecciones();
+  dibujarTodo();
+}
+
+function pintarForward(){
+  const tb = $("fwd");
+  const spot = S.trm;
+  if(!Number.isFinite(spot)){
+    tb.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--t3);font-size:11px;padding:16px">
+      Sin TRM no hay forward. Escríbela arriba o revisa el Diagnóstico.</td></tr>`;
+    return;
+  }
+  const rcop = num($("rcop").value) ?? (Number.isFinite(T.ibr) ? T.ibr : REF.ibr);
+  const rusd = num($("rusd").value) ?? (Number.isFinite(T.sofr) ? T.sofr : REF.sofr);
+  const filas = TENORS.map(([l,d]) => [l, forward(spot, rcop, rusd, d)]);
+  const mx = Math.max(...filas.map(r => Math.abs(r[1].dev)), .01);
+  tb.innerHTML = filas.map(([l,r]) => `<tr>
+      <td>${l}</td><td>${nf(r.f)}</td>
+      <td style="color:${r.puntos>=0?"var(--gold)":"var(--grn)"}">${r.puntos>=0?"+":""}${nf(r.puntos)}</td>
+      <td>${r.dev.toFixed(2)}%<span class="bar"><i style="width:${Math.abs(r.dev)/mx*100}%"></i></span></td>
+    </tr>`).join("");
+  pintarProyecciones();
+}
+$("rcop").oninput = function(){ this.dataset.tocado = "1"; pintarForward(); };
+$("rusd").oninput = function(){ this.dataset.tocado = "1"; pintarForward(); };
+
+$("msave").onclick = () => {
+  const v = num($("mtrm").value);
+  if(v == null || v < 500 || v > 20000){ alert("Ingresa un valor válido, por ejemplo 4210.50"); return; }
+  S = { trm:v, fecha:new Date().toISOString().slice(0,10), prev:null, base:null,
+        hist:[], fuente:"Ingreso manual", stale:false };
+  ls.set(K.trm, { ...S, ts:Date.now() });
+  $("dot").className = "dot live";
+  aviso("ok","TRM guardada. Se usará mientras no se logre consultar la oficial.");
+  pintarTRM();
+};
+
+/* ════════ PINTAR · TASAS ════════ */
+function guardarTasas(){ ls.set(K.tasas, T); }
+function edad(k){ const t = (T.ts||{})[k]; return t ? Math.floor((Date.now()-t)/864e5) : null; }
+
+function pintarEstado(){
+  const cont = $("estado"); if(!cont) return;
+  const vencidos = [], frescos = [];
+  ["banrep","ibr","dtf","usura","ibc","infl"].forEach(k => {
+    const d = edad(k);
+    const estimado = k === "dtf" && !Number.isFinite(T.dtf) && dtfEfectiva().v != null;
+    const vacio = !Number.isFinite(T[k]) && !estimado;
+    const auto = !vacio && !estimado && !!T[k+"Auto"] && d !== null && d < VENCE[k];
+    if(auto)     { frescos.push({k,d,auto:true}); return; }
+    if(estimado) { vencidos.push({k,d,estimado:true}); return; }
+    if(vacio || d === null || d >= VENCE[k]) vencidos.push({k,d,vacio});
+    else frescos.push({k,d,auto:false});
+  });
+
+  const chip = o => {
+    const cuando = o.estimado ? "estimada · confirmar"
+                 : o.vacio ? "sin dato"
+                 : o.d === null ? "sin revisar"
+                 : o.d === 0 ? "hoy" : `hace ${o.d} d`;
+    return `<a href="${ENLACE[o.k]}" target="_blank" rel="noopener"
+      style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;
+      background:var(--rbg);border:1px solid var(--red);color:var(--red);
+      font-family:var(--mono);font-size:10px;text-decoration:none;margin:3px 4px 0 0">
+      ${ETIQ[o.k]} · ${cuando} ↗</a>`;
+  };
+  const resumen = frescos.length
+    ? frescos.map(o => ETIQ[o.k] + (o.auto ? " automático" : o.d === 0 ? " hoy" : ` hace ${o.d} d`)).join(" · ")
+    : "";
+
+  cont.innerHTML = vencidos.length
+    ? `<div class="banner show warn"><b>Hay ${vencidos.length} dato${vencidos.length>1?"s":""} por revisar.</b>
+       Toca cualquiera para abrir su fuente oficial, mira el número y actualízalo abajo.
+       <div style="margin-top:6px">${vencidos.map(chip).join("")}</div>
+       ${resumen ? `<div style="margin-top:8px;color:var(--t3);font-size:10px">Al día: ${resumen}</div>` : ""}</div>`
+    : `<div class="banner show ok"><b>Todo al día.</b> ${resumen}</div>`;
+}
+
+function pintarTasas(){
+  $("k-banrep").textContent = pct(T.banrep);
+  $("k-banrep-s").textContent = "E.A. · corte " + (T.corte || "—");
+  $("k-ibr").textContent = pct(T.ibr);
+  $("k-ibr-s").textContent = T.ibrAuto && T.ibrFecha
+    ? "automático · " + T.ibrFecha : "overnight · corte " + (T.corte || "—");
+
+  const de = dtfEfectiva();
+  $("k-dtf").textContent = pct(de.v);
+  $("k-dtf").style.opacity = de.origen === "observado" ? "1" : ".72";
+  $("k-dtf-s").innerHTML =
+      de.origen === "observado"
+        ? (T.dtfAuto && T.dtfFecha ? "automático · " + T.dtfFecha : "semanal · corte " + (T.corte||"—"))
+    : de.origen === "estimado_ibr"
+        ? '<span style="color:var(--gold)">estimado desde el IBR</span> · confírmalo'
+    : de.origen === "estimado_politica"
+        ? '<span style="color:var(--gold)">estimado desde la tasa BanRep</span> · confírmalo'
+        : "sin dato";
+
+  $("k-infl").textContent = pct(T.infl);
+  $("k-infl-s").textContent = "IPC anual · corte " + (T.corte || "—");
+  $("k-ibc").textContent = pct(T.ibc);
+  $("k-ibc-s").textContent = "base legal de la usura";
+  $("k-usura").textContent = pct(T.usura);
+  $("k-usura-s").textContent = "consumo y ordinario · " + (T.corte || "—");
+
+  const set = (id, v) => {
+    const el = $(id); if(!el || document.activeElement === el) return;
+    el.value = (v == null ? "" : v);
+  };
+  set("i-banrep", T.banrep); set("i-ibr", T.ibr); set("i-dtf", T.dtf);
+  set("i-infl", T.infl);     set("i-ibc", T.ibc); set("i-usura", T.usura);
+  set("i-corte", T.corte);
+
+  if(!$("rcop").dataset.tocado && Number.isFinite(T.ibr))  $("rcop").value = T.ibr.toFixed(2);
+  if(!$("rusd").dataset.tocado && Number.isFinite(T.sofr)) $("rusd").value = T.sofr.toFixed(2);
+  $("rcop-h").textContent = T.ibrAuto && T.ibrFecha
+    ? "automático · " + T.ibrFecha : "corte " + (T.corte||"—") + " · editable";
+  $("rusd-h").textContent = T.sofrAuto && T.sofrFecha
+    ? "NY Fed · " + T.sofrFecha : "corte " + (T.corte||"—") + " · editable";
+
+  pintarEstado();
+  pintarSenda();
+  pintarForward();
+}
+
+["i-banrep","i-ibr","i-dtf","i-infl","i-ibc","i-usura","i-corte"].forEach(id => {
+  const el = $(id); if(!el) return;
+  el.oninput = () => {
+    const k = id.slice(2);
+    T[k] = (id === "i-corte") ? (el.value || "—") : (num(el.value) ?? T[k]);
+    if(id !== "i-corte"){
+      T.ts = T.ts || {}; T.ts[k] = Date.now();
+      T[k + "Auto"] = false;
+    }
+    guardarTasas();
+    pintarTasas();
+  };
+});
+
+$("reset-tasas").onclick = () => {
+  T = Object.assign({}, REF, { ts:Object.assign({}, REF_TSS),
+                               sofr:T.sofr, sofrFecha:T.sofrFecha, sofrAuto:T.sofrAuto });
+  guardarTasas(); pintarTasas();
+};
+
+function aplicarEsc(e){
+  const p = ESC[e]; if(!p) return;
+  $("i-rstar").value = p.rstar; $("i-meta").value = p.meta;
+  $("i-brecha").value = p.brecha; $("i-coefa").value = p.a;
+  $("i-coefb").value = p.b; $("i-rho").value = p.rho; $("i-lambda").value = p.lambda;
+}
+document.querySelectorAll("#seg-esc .sg").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#seg-esc .sg").forEach(x => x.classList.remove("on"));
+  b.classList.add("on"); esc = b.dataset.e; aplicarEsc(esc); pintarSenda();
+});
+["i-rstar","i-meta","i-brecha","i-coefa","i-coefb","i-rho","i-lambda","i-tri"]
+  .forEach(id => { const el = $(id); if(el) el.oninput = pintarSenda; });
+
+function pintarSenda(){
+  const p = paramsModelo();
+  const s = senda();
+  const banrep = Number.isFinite(T.banrep) ? T.banrep : REF.banrep;
+  const infl   = Number.isFinite(T.infl)   ? T.infl   : REF.infl;
+
+  const iE = taylor(infl, p);
+  const brecha = banrep - iE;
+  $("taylor-hoy").textContent = iE.toFixed(2) + "%";
+  const bt = $("taylor-brecha");
+  if(Math.abs(brecha) < 0.25){ bt.textContent = "neutral"; bt.style.color = "var(--t1)"; }
+  else if(brecha > 0){ bt.textContent = "+" + brecha.toFixed(2) + " pp restrictiva"; bt.style.color = "var(--red)"; }
+  else { bt.textContent = brecha.toFixed(2) + " pp expansiva"; bt.style.color = "var(--grn)"; }
+
+  $("taylor-lectura").innerHTML =
+    `Con inflación en <b>${infl.toFixed(2)}%</b> y meta de <b>${p.meta.toFixed(1)}%</b>, la regla pide `
+    + `<b>${iE.toFixed(2)}%</b>. La tasa observada es <b>${banrep.toFixed(2)}%</b>, `
+    + `<b>${Math.abs(brecha).toFixed(2)} pp ${brecha > 0 ? "por encima" : "por debajo"}</b>. `
+    + `La tasa real ex-post está en <b>${(banrep-infl).toFixed(2)}%</b> frente a una neutral supuesta de `
+    + `<b>${p.rstar.toFixed(2)}%</b>.<br><span style="color:var(--t3)">${ESC_TXT[esc]||""}</span>`;
+
+  $("tb-proy").innerHTML = s.map((r,i) => `<tr${i===0 ? ' style="opacity:.65"' : ''}>
+    <td>${r.et}${i===0 ? " · hoy" : ""}</td>
+    <td style="color:var(--blu)">${r.pi.toFixed(2)}%</td>
+    <td style="color:var(--t3)">${r.taylor.toFixed(2)}%</td>
+    <td style="color:var(--gold)">${r.br.toFixed(2)}%</td>
+    <td>${r.dtf.toFixed(2)}%</td><td>${r.ibc.toFixed(2)}%</td>
+    <td style="color:var(--red)">${r.usura.toFixed(2)}%</td></tr>`).join("");
+
+  dibujarSeries("ch-banrep", s.map(r=>r.et), [
+    { datos:s.map(r=>r.br),     color:css("--gold"), grosor:2,   area:true },
+    { datos:s.map(r=>r.pi),     color:css("--blu"),  grosor:1.8 },
+    { datos:s.map(r=>r.taylor), color:css("--t3"),   grosor:1.3, guion:[4,3] },
+  ]);
+  dibujarLinea("ch-usura", s.map(r=>({x:r.et, y:r.usura})), css("--red"), "%");
+}
+
+/* ════════ PINTAR · PROYECCIONES TRM ════════ */
+const FUENTES_DEF = [
+  { n:"Forward implícito 12M", u:"", calc:true },
+  { n:"BanRep · EME (consenso analistas)", u:"https://www.banrep.gov.co/es/contenidos/encuestas-expectativas-economicas", v:null },
+  { n:"Fedesarrollo · EOF", u:"https://www.fedesarrollo.org.co/encuestas/encuesta-de-opinion-financiera", v:null },
+  { n:"Bancolombia · Inv. Económicas", u:"https://www.grupobancolombia.com/investigaciones-economicas", v:null },
+  { n:"Corficolombiana · Research", u:"https://www.corficolombiana.com/investigaciones-economicas", v:null },
+];
+function guardarProy(){ ls.set(K.proy, P); }
+
+function fwd12(){
+  if(!Number.isFinite(S.trm)) return null;
+  const rcop = num($("rcop").value) ?? (Number.isFinite(T.ibr) ? T.ibr : REF.ibr);
+  const rusd = num($("rusd").value) ?? (Number.isFinite(T.sofr) ? T.sofr : REF.sofr);
+  return forward(S.trm, rcop, rusd, 365).f;
+}
+
+function pintarProyecciones(){
+  const cont = $("prows"); if(!cont) return;
+  const spot = S.trm, f12 = fwd12();
+
+  cont.innerHTML = P.map((r,i) => {
+    const val = r.calc ? f12 : r.v;
+    const diff = (Number.isFinite(val) && Number.isFinite(spot)) ? (val/spot - 1)*100 : null;
+    const dcol = diff == null ? "var(--t3)" : diff > 0 ? "var(--red)" : "var(--grn)";
+    const dtxt = diff == null ? "—" : (diff>=0?"+":"") + diff.toFixed(1) + "%";
+    const link = r.u ? `<small><a href="${r.u}" target="_blank" rel="noopener">ver informe ↗</a></small>`
+               : (r.calc ? `<small>se calcula solo desde TRM y tasas</small>` : "");
+    const input = r.calc
+      ? `<input class="pin ro" value="${Number.isFinite(val) ? nf0(val) : "—"}" readonly tabindex="-1">`
+      : `<input class="pin" type="number" inputmode="decimal" step="1" placeholder="—"
+           value="${r.v != null ? r.v : ""}" data-i="${i}">`;
+    const del = r.calc ? "<span></span>" : `<button class="pdel" data-d="${i}" aria-label="Eliminar">×</button>`;
+    return `<div class="prow"><div class="pname">${r.n}${link}</div>${input}
+      <div style="text-align:right;font-family:var(--mono);font-size:12px;color:${dcol}">${dtxt}</div>${del}</div>`;
+  }).join("");
+
+  cont.querySelectorAll("input[data-i]").forEach(inp => {
+    inp.oninput = () => { P[+inp.dataset.i].v = num(inp.value); guardarProy(); refrescarDiffs(); };
+    inp.onblur  = pintarProyecciones;
+  });
+  cont.querySelectorAll("button[data-d]").forEach(b => b.onclick = () => {
+    P.splice(+b.dataset.d, 1); guardarProy(); pintarProyecciones();
+  });
+
+  const n = P.filter(r => (r.calc && Number.isFinite(f12)) || Number.isFinite(r.v)).length;
+  $("proy-n").textContent = n + " de " + P.length + " con dato";
+  dibujarProy();
+}
+
+function refrescarDiffs(){
+  const spot = S.trm; if(!Number.isFinite(spot)) return;
+  const f12 = fwd12();
+  $("prows").querySelectorAll(".prow").forEach((row,i) => {
+    const r = P[i]; if(!r) return;
+    const val = r.calc ? f12 : r.v;
+    const diff = Number.isFinite(val) ? (val/spot - 1)*100 : null;
+    const cell = row.children[2];
+    cell.textContent = diff == null ? "—" : (diff>=0?"+":"") + diff.toFixed(1) + "%";
+    cell.style.color = diff == null ? "var(--t3)" : diff > 0 ? "var(--red)" : "var(--grn)";
+  });
+  const n = P.filter(r => (r.calc && Number.isFinite(f12)) || Number.isFinite(r.v)).length;
+  $("proy-n").textContent = n + " de " + P.length + " con dato";
+  dibujarProy();
+}
+
+$("addrow").onclick = () => {
+  const n = prompt("Nombre de la fuente (por ejemplo JP Morgan, Citi, mi estimación):");
+  if(!n) return;
+  P.push({ n:n.slice(0,60), u:"", v:null, calc:false });
+  guardarProy(); pintarProyecciones();
+};
+$("clearrows").onclick = () => {
+  P.forEach(r => { if(!r.calc) r.v = null; });
+  guardarProy(); pintarProyecciones();
+};
+
+/* ════════ GRÁFICOS ════════ */
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function prep(cv, h){
+  const dpr = devicePixelRatio || 1;
+  const w = Math.max(200, (cv.parentElement.clientWidth || 360) - 32);
+  cv.width = w*dpr; cv.height = h*dpr;
+  cv.style.width = w+"px"; cv.style.height = h+"px";
+  const cx = cv.getContext("2d");
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx.clearRect(0,0,w,h);
+  return { cx, w, h };
+}
+function vacio(cx, w, h, msg){
+  cx.fillStyle = css("--t3"); cx.font = "11px monospace"; cx.textAlign = "center";
+  cx.fillText(msg, w/2, h/2);
+}
+
+function dibujarTRM(){
+  const cv = $("chart"); if(!cv) return;
+  const hist = S.hist;
+  const { cx, w, h } = prep(cv, 150);
+  if(!hist || hist.length < 2){ vacio(cx, w, h, "Sin histórico disponible"); return; }
+  const P0 = {t:8,r:6,b:16,l:46}, cw = w-P0.l-P0.r, ch = h-P0.t-P0.b;
+  const v = hist.map(d=>d.valor);
+  let mn = Math.min(...v), mx = Math.max(...v);
+  const pad = (mx-mn)*0.12 || 10; mn -= pad; mx += pad;
+  const X = i => P0.l + (i/(hist.length-1))*cw;
+  const Y = y => P0.t + ch - ((y-mn)/(mx-mn))*ch;
+  const gold = css("--gold"), bdr = css("--bdr"), t3 = css("--t3");
+  cx.font = "9px monospace"; cx.textAlign = "right";
+  for(let i=0;i<=3;i++){
+    const gy = P0.t + (ch/3)*i, gv = mx - ((mx-mn)/3)*i;
+    cx.beginPath(); cx.strokeStyle = bdr; cx.lineWidth = 1;
+    cx.moveTo(P0.l,gy); cx.lineTo(P0.l+cw,gy); cx.stroke();
+    cx.fillStyle = t3; cx.fillText(nf0(gv), P0.l-6, gy+3);
+  }
+  cx.beginPath();
+  hist.forEach((d,i)=> i ? cx.lineTo(X(i),Y(d.valor)) : cx.moveTo(X(i),Y(d.valor)));
+  cx.lineTo(X(hist.length-1), P0.t+ch); cx.lineTo(X(0), P0.t+ch); cx.closePath();
+  const g = cx.createLinearGradient(0,P0.t,0,P0.t+ch);
+  g.addColorStop(0, gold+"40"); g.addColorStop(1, gold+"00");
+  cx.fillStyle = g; cx.fill();
+  cx.beginPath();
+  hist.forEach((d,i)=> i ? cx.lineTo(X(i),Y(d.valor)) : cx.moveTo(X(i),Y(d.valor)));
+  cx.strokeStyle = gold; cx.lineWidth = 2; cx.lineJoin = "round"; cx.lineCap = "round"; cx.stroke();
+  const li = hist.length-1;
+  cx.beginPath(); cx.arc(X(li), Y(hist[li].valor), 3.5, 0, 7); cx.fillStyle = gold; cx.fill();
+}
+
+function dibujarSeries(id, etiquetas, series){
+  const cv = $(id); if(!cv) return;
+  const { cx, w, h } = prep(cv, 155);
+  const todos = series.flatMap(s=>s.datos).filter(Number.isFinite);
+  if(!todos.length){ vacio(cx, w, h, "Sin datos para proyectar"); return; }
+  const P0 = {t:10,r:8,b:20,l:46}, cw = w-P0.l-P0.r, ch = h-P0.t-P0.b;
+  let mn = Math.min(...todos), mx = Math.max(...todos);
+  const pad = Math.max((mx-mn)*0.15, 0.5); mn -= pad; mx += pad;
+  const n = etiquetas.length;
+  const X = i => P0.l + (i/Math.max(1,n-1))*cw;
+  const Y = y => P0.t + ch - ((y-mn)/(mx-mn))*ch;
+  const bdr = css("--bdr"), t3 = css("--t3");
+  cx.font = "9px monospace"; cx.textAlign = "right";
+  for(let i=0;i<=3;i++){
+    const gy = P0.t + (ch/3)*i, gv = mx - ((mx-mn)/3)*i;
+    cx.beginPath(); cx.strokeStyle = bdr; cx.lineWidth = 1;
+    cx.moveTo(P0.l,gy); cx.lineTo(P0.l+cw,gy); cx.stroke();
+    cx.fillStyle = t3; cx.fillText(gv.toFixed(1)+"%", P0.l-5, gy+3);
+  }
+  series.forEach(s => {
+    if(s.area){
+      cx.beginPath();
+      s.datos.forEach((v,i)=> i ? cx.lineTo(X(i),Y(v)) : cx.moveTo(X(i),Y(v)));
+      cx.lineTo(X(n-1), P0.t+ch); cx.lineTo(X(0), P0.t+ch); cx.closePath();
+      const g = cx.createLinearGradient(0,P0.t,0,P0.t+ch);
+      g.addColorStop(0, s.color+"30"); g.addColorStop(1, s.color+"00");
+      cx.fillStyle = g; cx.fill();
+    }
+    cx.beginPath();
+    s.datos.forEach((v,i)=> i ? cx.lineTo(X(i),Y(v)) : cx.moveTo(X(i),Y(v)));
+    cx.strokeStyle = s.color; cx.lineWidth = s.grosor || 2;
+    cx.setLineDash(s.guion || []); cx.lineJoin = "round"; cx.stroke(); cx.setLineDash([]);
+    if(!s.guion) s.datos.forEach((v,i)=>{
+      cx.beginPath(); cx.arc(X(i),Y(v),2.6,0,7); cx.fillStyle = s.color; cx.fill();
+    });
+  });
+  etiquetas.forEach((e,i)=>{
+    if(n <= 9 || i % 2 === 0){
+      cx.textAlign = i === 0 ? "left" : (i === n-1 ? "right" : "center");
+      cx.fillStyle = t3; cx.fillText(e, X(i), h-6);
+    }
+  });
+  cx.textAlign = "center";
+}
+
+function dibujarLinea(id, pts, color, suf){
+  const cv = $(id); if(!cv) return;
+  const { cx, w, h } = prep(cv, 140);
+  if(!pts.length){ vacio(cx, w, h, "Sin datos"); return; }
+  const P0 = {t:10,r:8,b:20,l:46}, cw = w-P0.l-P0.r, ch = h-P0.t-P0.b;
+  const v = pts.map(p=>p.y);
+  let mn = Math.min(...v), mx = Math.max(...v);
+  const pad = Math.max((mx-mn)*0.18, 0.4); mn -= pad; mx += pad;
+  const X = i => P0.l + (i/Math.max(1,pts.length-1))*cw;
+  const Y = y => P0.t + ch - ((y-mn)/(mx-mn))*ch;
+  const bdr = css("--bdr"), t3 = css("--t3");
+  cx.font = "9px monospace"; cx.textAlign = "right";
+  for(let i=0;i<=3;i++){
+    const gy = P0.t + (ch/3)*i, gv = mx - ((mx-mn)/3)*i;
+    cx.beginPath(); cx.strokeStyle = bdr; cx.lineWidth = 1;
+    cx.moveTo(P0.l,gy); cx.lineTo(P0.l+cw,gy); cx.stroke();
+    cx.fillStyle = t3; cx.fillText(gv.toFixed(1)+suf, P0.l-5, gy+3);
+  }
+  cx.beginPath();
+  pts.forEach((p,i)=> i ? cx.lineTo(X(i),Y(p.y)) : cx.moveTo(X(i),Y(p.y)));
+  cx.lineTo(X(pts.length-1), P0.t+ch); cx.lineTo(X(0), P0.t+ch); cx.closePath();
+  const g = cx.createLinearGradient(0,P0.t,0,P0.t+ch);
+  g.addColorStop(0, color+"38"); g.addColorStop(1, color+"00");
+  cx.fillStyle = g; cx.fill();
+  cx.beginPath();
+  pts.forEach((p,i)=> i ? cx.lineTo(X(i),Y(p.y)) : cx.moveTo(X(i),Y(p.y)));
+  cx.strokeStyle = color; cx.lineWidth = 2; cx.lineJoin = "round"; cx.stroke();
+  pts.forEach((p,i)=>{
+    cx.beginPath(); cx.arc(X(i),Y(p.y),3,0,7); cx.fillStyle = color; cx.fill();
+    if(pts.length <= 9 || i % 2 === 0){
+      cx.textAlign = i === 0 ? "left" : (i === pts.length-1 ? "right" : "center");
+      cx.fillStyle = t3; cx.fillText(p.x, X(i), h-6);
+    }
+  });
+  cx.textAlign = "center";
+}
+
+function dibujarProy(){
+  const cv = $("ch-proy"); if(!cv) return;
+  const { cx, w, h } = prep(cv, 170);
+  const spot = S.trm, f12 = fwd12();
+  const items = P.map(r => ({ n:r.n, v:r.calc ? f12 : r.v, calc:!!r.calc }))
+                 .filter(r => Number.isFinite(r.v));
+  if(!items.length || !Number.isFinite(spot)){
+    vacio(cx, w, h, Number.isFinite(spot) ? "Anota al menos una proyección" : "Sin TRM no hay comparación");
+    return;
+  }
+  const gold = css("--gold"), blu = css("--blu"), t3 = css("--t3");
+  const lPad = Math.min(140, Math.max(70, w*0.32));
+  const P0 = {t:10,r:48,b:16,l:lPad}, cw = w-P0.l-P0.r, ch = h-P0.t-P0.b;
+  const todos = items.map(i=>i.v).concat([spot]);
+  let mn = Math.min(...todos), mx = Math.max(...todos);
+  const pad = Math.max((mx-mn)*0.15, 40); mn -= pad; mx += pad;
+  const X = v => P0.l + ((v-mn)/(mx-mn))*cw;
+  const bh = Math.min(20, ch/Math.max(1,items.length) - 6);
+
+  cx.font = "10px monospace";
+  const cortar = s => {
+    if(cx.measureText(s).width <= lPad-12) return s;
+    let t = s;
+    while(t.length > 1 && cx.measureText(t+"…").width > lPad-12) t = t.slice(0,-1);
+    return t + "…";
+  };
+  cx.beginPath(); cx.strokeStyle = gold; cx.lineWidth = 1.5; cx.setLineDash([4,3]);
+  cx.moveTo(X(spot), P0.t-4); cx.lineTo(X(spot), P0.t+ch); cx.stroke(); cx.setLineDash([]);
+
+  items.forEach((it,i) => {
+    const y = P0.t + (ch/items.length)*i + (ch/items.length - bh)/2;
+    const x0 = X(spot), x1 = X(it.v);
+    cx.fillStyle = it.calc ? gold : blu;
+    cx.globalAlpha = it.calc ? .85 : .7;
+    cx.fillRect(Math.min(x0,x1), y, Math.abs(x1-x0) || 1.5, bh);
+    cx.globalAlpha = 1;
+    cx.fillStyle = css("--t2"); cx.textAlign = "right";
+    cx.fillText(cortar(it.n), P0.l-8, y + bh/2 + 3);
+    const etq = nf0(it.v), anc = cx.measureText(etq).width;
+    let ex = Math.max(x0,x1) + 6;
+    if(ex + anc > w - 4) ex = w - 4 - anc;
+    cx.fillStyle = it.calc ? gold : css("--t1"); cx.textAlign = "left";
+    cx.fillText(etq, ex, y + bh/2 + 3);
+  });
+  cx.fillStyle = gold; cx.font = "9px monospace"; cx.textAlign = "center";
+  cx.fillText("hoy", X(spot), h-4);
+}
+
+function dibujarTodo(){ dibujarTRM(); pintarSenda(); dibujarProy(); }
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(dibujarTodo, 150); });
+
+/* ════════ DIAGNÓSTICO ════════ */
+function filaDiag(estado, nombre, detalle){
+  const ico = { ok:"✓", err:"✕", warn:"!", wait:"…" }[estado] || "…";
+  return `<div class="drow"><div class="dico ${estado}">${ico}</div>
+    <div class="dtxt"><div class="dname">${nombre}</div>
+    <div class="ddet">${detalle}</div></div></div>`;
+}
+
+function pintarEntorno(){
+  const modo = ESLOCAL ? "archivo local (file://)" : location.origin;
+  const instalada = matchMedia("(display-mode: standalone)").matches;
+  const sw = "serviceWorker" in navigator;
+  const filas = [
+    filaDiag(ESLOCAL ? "err" : "ok", "Cómo está abierta la app",
+      ESLOCAL
+        ? "Abierta como <code>archivo local</code>. En este modo el navegador <b>bloquea todas las consultas de red</b>, así que la TRM y las tasas nunca se van a actualizar. Publica la app en una dirección web y ábrela desde ahí."
+        : "Servida desde <code>" + modo + "</code>. Las consultas de red están permitidas."),
+    filaDiag("ok", "Instalada como aplicación", instalada ? "Sí, abierta a pantalla completa" : "No, abierta dentro del navegador"),
+    filaDiag(sw ? "ok" : "warn", "Service worker", sw ? "Soportado por este navegador" : "No soportado: no habrá modo sin conexión"),
+    filaDiag("ok", "Conexión del dispositivo", navigator.onLine ? "El navegador reporta que hay internet" : "El navegador reporta que NO hay internet"),
+  ];
+  $("diag-env").innerHTML = filas.join("");
+  $("diag-badge").style.display = ESLOCAL ? "inline-block" : "none";
+}
+
+function pintarAlmacen(){
+  const t = ls.get(K.trm, null), ta = ls.get(K.tasas, null), pr = ls.get(K.proy, null);
+  $("diag-ls").innerHTML = [
+    filaDiag(ls.ok ? "ok" : "err", "Guardado local",
+      ls.ok ? "Funciona. Aquí se conservan la TRM, las tasas y tus proyecciones."
+            : "Bloqueado por el navegador. Nada se va a conservar entre sesiones (suele pasar en ventanas privadas)."),
+    filaDiag(t ? "ok" : "warn", "TRM guardada",
+      t ? `${nf(t.trm)} del ${t.fecha} · fuente ${t.fuente||"—"}` : "No hay ninguna guardada todavía"),
+    filaDiag(ta ? "ok" : "warn", "Tasas guardadas",
+      ta ? `BanRep ${pct(ta.banrep)} · IBR ${pct(ta.ibr)} · usura ${pct(ta.usura)}` : "Usando los valores de referencia"),
+    filaDiag(pr ? "ok" : "warn", "Proyecciones anotadas",
+      pr ? `${pr.filter(r=>r.v!=null).length} con valor, de ${pr.length} fuentes` : "Ninguna anotada todavía"),
+  ].join("");
+}
+
+async function correrDiagnostico(){
+  const cont = $("diag-src");
+  const pruebas = [
+    { nombre:"TRM oficial · datos.gov.co", correr:traerTRM,
+      resumir:r => `${nf(r.trm)} del ${r.fecha} · ${r.total} registros recibidos` },
+    { nombre:"SOFR · NY Federal Reserve", correr:traerSOFR,
+      resumir:r => `${r.valor}% del ${r.fecha}` },
+    { nombre:"IBR · Datos Abiertos", correr:() => traerDeSets(IBR_SETS,[0.5,30]),
+      resumir:r => `${r.valor}% del ${r.fecha} · dataset ${r.dataset}, columna "${r.campo}"` },
+    { nombre:"DTF · Datos Abiertos", correr:() => traerDeSets(DTF_SETS,[0.5,30]),
+      resumir:r => `${r.valor}% del ${r.fecha} · dataset ${r.dataset}, columna "${r.campo}"` },
+    { nombre:"Respaldo de mercado · open.er-api.com", correr:traerRespaldo,
+      resumir:r => `${nf(r.trm)} COP/USD` },
+    { nombre:"datos.json (actualización automática)", correr:traerDatosJSON,
+      resumir:d => `actualizado ${String(d.actualizado||"").slice(0,10)} · ${Object.keys(d.tasas||{}).length} tasas` },
+  ];
+
+  DIAG = [];
+  cont.innerHTML = pruebas.map(p => filaDiag("wait", p.nombre, "probando…")).join("");
+
+  for(let i = 0; i < pruebas.length; i++){
+    const p = pruebas[i];
+    const t0 = performance.now();
+    let estado, detalle;
+    try{
+      const r = await p.correr();
+      const ms = Math.round(performance.now() - t0);
+      estado = "ok"; detalle = p.resumir(r) + ` · ${ms} ms`;
+    }catch(e){
+      const ms = Math.round(performance.now() - t0);
+      estado = "err"; detalle = explicar(e) + ` · ${ms} ms`;
+    }
+    DIAG.push({ nombre:p.nombre, estado, detalle });
+    cont.innerHTML = pruebas.map((q,j) =>
+      j < DIAG.length ? filaDiag(DIAG[j].estado, DIAG[j].nombre, DIAG[j].detalle)
+                      : filaDiag("wait", q.nombre, j === DIAG.length ? "probando…" : "en espera")
+    ).join("");
+  }
+
+  const fallan = DIAG.filter(d => d.estado === "err").length;
+  const badge = $("diag-badge");
+  badge.style.display = (fallan || ESLOCAL) ? "inline-block" : "none";
+  badge.textContent = fallan || "!";
+  pintarAlmacen();
+}
+
+$("run-diag").onclick = correrDiagnostico;
+$("copy-diag").onclick = async () => {
+  const txt = [
+    "PesoDólar · diagnóstico",
+    "Fecha: " + new Date().toISOString(),
+    "Origen: " + (ESLOCAL ? "file:// (archivo local)" : location.origin),
+    "Instalada: " + (matchMedia("(display-mode: standalone)").matches ? "sí" : "no"),
+    "En línea: " + navigator.onLine,
+    "Navegador: " + navigator.userAgent,
+    "",
+    ...(DIAG.length ? DIAG.map(d => `[${d.estado.toUpperCase()}] ${d.nombre} — ${d.detalle}`)
+                    : ["(no se han corrido las pruebas)"]),
+  ].join("\n");
+  try{
+    await navigator.clipboard.writeText(txt);
+    $("copy-diag").textContent = "Copiado ✓";
+    setTimeout(()=>{ $("copy-diag").textContent = "Copiar resultado"; }, 2000);
+  }catch(e){
+    prompt("Copia este texto:", txt);
+  }
+};
+
+/* ════════ ARRANQUE ════════ */
+(function init(){
+  /* Tasas: referencia, luego lo guardado encima, descartando lo que no sea número */
+  const guardado = ls.get(K.tasas, {}) || {};
+  T = Object.assign({}, REF, { ts:Object.assign({}, REF_TSS) });
+  for(const [k,v] of Object.entries(guardado)){
+    if(k === "ts" && v && typeof v === "object"){ T.ts = Object.assign({}, REF_TSS, v); continue; }
+    if(k === "corte" && typeof v === "string"){ T.corte = v; continue; }
+    if(typeof v === "boolean" || typeof v === "string"){ T[k] = v; continue; }
+    if(v === null || Number.isFinite(v)) T[k] = v;
+  }
+
+  P = ls.get(K.proy, null) || FUENTES_DEF.map(f => ({ n:f.n, u:f.u||"", v:f.v ?? null, calc:!!f.calc }));
+
+  /* Parámetros del modelo al escenario base */
+  $("i-tri").value = PARAMS_DEF.tri;
+  aplicarEsc("base");
+
+  applyTheme();
+  pintarTasas();
+  pintarProyecciones();
+  pintarEntorno();
+  pintarAlmacen();
+
+  /* Si se abrió como archivo local, decirlo de una vez y no fingir que carga */
+  if(ESLOCAL){
+    const b = $("banner-file");
+    b.className = "banner show err";
+    b.innerHTML = "<b>Esta app está abierta como archivo local.</b> El navegador bloquea "
+      + "las consultas de red en este modo, así que la TRM y las tasas <b>no se pueden "
+      + "actualizar solas</b>. Las proyecciones sí funcionan. Para que todo funcione, "
+      + "publícala en una dirección web y ábrela desde ahí.";
+  }
+
+  const c = ls.get(K.trm, null);
+  if(c && Number.isFinite(c.trm)){ S = Object.assign({}, c, {stale:true}); pintarTRM(); }
+  else { pintarTRM(); }
+
+  if(!ESLOCAL) cargar({ silencioso: !!(c && c.trm) });
+  else { $("dot").className = "dot err"; }
+})();
+
+$("refresh").onclick = () => {
+  if(ESLOCAL){
+    aviso("err","No se puede actualizar: la app está abierta como archivo local. Mira la pestaña Diagnóstico.");
+    return;
+  }
+  cargar();
+};
+
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && !ESLOCAL){
+    const c = ls.get(K.trm, null);
+    if(!c || Date.now() - (c.ts||0) > 30*60e3) cargar({silencioso:true});
+  }
+});
+
+if("serviceWorker" in navigator && !ESLOCAL)
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script>
+</body>
+</html>

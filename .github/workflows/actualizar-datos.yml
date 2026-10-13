@@ -1,0 +1,33 @@
+name: Actualizar tasas
+
+# Días hábiles a las 14:30 UTC = 9:30 a.m. en Colombia, después de que el
+# Banco de la República publica la TRM del día.
+on:
+  schedule:
+    - cron: "30 14 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Consultar fuentes
+        run: node scripts/actualizar.mjs
+      - name: Publicar si algo cambió
+        run: |
+          if [ -z "$(git status --porcelain datos.json)" ]; then
+            echo "Sin cambios en datos.json."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add datos.json
+          git commit -m "Actualizar tasas $(date -u +%Y-%m-%d)"
+          git push
