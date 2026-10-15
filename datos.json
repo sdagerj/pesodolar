@@ -1,18 +1,48 @@
 {
-  "actualizado": "2026-10-15T03:34:04.434Z",
+  "actualizado": "2026-10-15T03:40:21.639Z",
   "tasas": {
     "trm": {
       "valor": 3197.65,
       "fecha": "2026-10-15",
       "fuente": "datos.gov.co/32sa-8pi3"
+    },
+    "sofr": {
+      "valor": 3.89,
+      "fecha": "2026-10-13",
+      "fuente": "newyorkfed.org"
+    },
+    "ibc": {
+      "valor": 19.06,
+      "fecha": "2026-10-01",
+      "fuente": "datos.gov.co/pare-7x5i · SFC",
+      "modalidad": "CONSUMO Y ORDINARIO",
+      "vigencia_hasta": "2026-10-31"
+    },
+    "usura": {
+      "valor": 28.59,
+      "fecha": "2026-10-01",
+      "fuente": "datos.gov.co/pare-7x5i · SFC",
+      "nota": "IBC x 1,5 (regla legal)"
+    },
+    "cdt90": {
+      "valor": 10.3528,
+      "fecha": "2026-10-09",
+      "fuente": "datos.gov.co/axk9-g2nh · SFC",
+      "nota": "promedio ponderado por monto de 35 emisiones de CDT a 90 dias"
+    },
+    "dtf": {
+      "valor": 10.3528,
+      "fecha": "2026-10-09",
+      "fuente": "datos.gov.co/axk9-g2nh · SFC",
+      "nota": "promedio ponderado por monto de 35 emisiones de CDT a 90 dias"
     }
   },
   "estado": {
     "trm": "ok",
-    "ibr": "sin_dato",
-    "dtf": "sin_dato",
-    "sofr": "sin_dato",
-    "usura": "sin_dato",
-    "ibc": "sin_dato"
+    "sofr": "ok",
+    "ibc": "ok",
+    "usura": "ok",
+    "cdt90": "ok",
+    "dtf": "ok"
   }
 }
