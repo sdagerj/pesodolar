@@ -520,10 +520,10 @@ const K = { trm:"pesodolar.trm.v3", tasas:"pesodolar.tasas.v3",
 
 /* Valores de referencia con su fecha de corte real. La antigüedad se cuenta
    desde REF_TS, no desde que abres la app, para que un dato viejo se note. */
-const REF = { banrep:12.00, ibr:11.90, dtf:null, ibc:19.77,
+const REF = { banrep:12.00, ibr:null, dtf:null, ibc:19.77,
               usura:29.66, infl:6.14, sofr:3.62, corte:"ago 2026" };
 const REF_TS  = Date.parse("2026-08-11T00:00:00Z");
-const REF_TSS = { banrep:REF_TS, ibr:REF_TS, ibc:REF_TS, usura:REF_TS, infl:REF_TS };
+const REF_TSS = { banrep:REF_TS, ibc:REF_TS, usura:REF_TS, infl:REF_TS };
 
 const VENCE = { banrep:50, ibr:10, dtf:12, usura:35, ibc:35, infl:35 };
 const ETIQ  = { banrep:"Tasa BanRep", ibr:"IBR overnight", dtf:"DTF",
@@ -785,6 +785,11 @@ function aplicarDatosJSON(d){
   /* cdt90 y dtf son el mismo número: promedio de CDT a 90 días */
   poner("dtf","dtf",[0.5,30]);
   if(!Number.isFinite(T.dtf)) poner("cdt90","dtf",[0.5,30]);
+  /* Estas no tienen fuente automática, pero viajan en datos.json para que
+     al corregirlas una vez en el repositorio queden iguales en todos los
+     dispositivos, en vez de tener que editarlas aparato por aparato. */
+  poner("banrep","banrep",[0.5,30]);
+  poner("infl","infl",[-5,40]);
   poner("usura","usura",[10,60]);
   poner("ibc","ibc",[5,45]);
   poner("sofr","sofr",[0,15]);
@@ -808,10 +813,20 @@ function forward(spot, rcop, rusd, dias, base=360){
 /* DTF efectiva: observada, o estimada desde el IBR. La norma declara que
    desde 2027 la DTF pasa al IBR a 3 meses, así que el IBR es la mejor
    aproximación disponible mientras tanto. */
+/* El IBR overnight sigue a la tasa de política prácticamente uno a uno:
+   es la tasa a la que los bancos se prestan a un día, anclada por el
+   corredor del banco central. Si no hay dato propio, se deriva de la tasa
+   BanRep y se rotula, en vez de pedir que se escriba por aparte. */
+function ibrEfectivo(){
+  if(Number.isFinite(T.ibr)) return { v:T.ibr, origen:"observado" };
+  if(Number.isFinite(T.banrep)) return { v:T.banrep, origen:"estimado_politica" };
+  return { v:null, origen:"sin_dato" };
+}
+
 function dtfEfectiva(){
   if(Number.isFinite(T.dtf)) return { v:T.dtf, origen:"observado" };
-  if(Number.isFinite(T.ibr)) return { v:T.ibr, origen:"estimado_ibr" };
-  if(Number.isFinite(T.banrep)) return { v:T.banrep, origen:"estimado_politica" };
+  const i = ibrEfectivo();
+  if(i.v != null) return { v:i.v, origen:i.origen === "observado" ? "estimado_ibr" : "estimado_politica" };
   return { v:null, origen:"sin_dato" };
 }
 
@@ -929,7 +944,7 @@ function pintarForward(){
       Sin TRM no hay forward. Escríbela arriba o revisa el Diagnóstico.</td></tr>`;
     return;
   }
-  const rcop = num($("rcop").value) ?? (Number.isFinite(T.ibr) ? T.ibr : REF.ibr);
+  const rcop = num($("rcop").value) ?? (ibrEfectivo().v ?? REF.ibr);
   const rusd = num($("rusd").value) ?? (Number.isFinite(T.sofr) ? T.sofr : REF.sofr);
   const filas = TENORS.map(([l,d]) => [l, forward(spot, rcop, rusd, d)]);
   const mx = Math.max(...filas.map(r => Math.abs(r[1].dev)), .01);
@@ -963,7 +978,8 @@ function pintarEstado(){
   const vencidos = [], frescos = [];
   ["banrep","ibr","dtf","usura","ibc","infl"].forEach(k => {
     const d = edad(k);
-    const estimado = k === "dtf" && !Number.isFinite(T.dtf) && dtfEfectiva().v != null;
+    const estimado = (k === "dtf"  && !Number.isFinite(T.dtf) && dtfEfectiva().v != null)
+                  || (k === "ibr"  && !Number.isFinite(T.ibr) && ibrEfectivo().v != null);
     const vacio = !Number.isFinite(T[k]) && !estimado;
     const auto = !vacio && !estimado && !!T[k+"Auto"] && d !== null && d < VENCE[k];
     if(auto)     { frescos.push({k,d,auto:true}); return; }
@@ -998,9 +1014,14 @@ function pintarEstado(){
 function pintarTasas(){
   $("k-banrep").textContent = pct(T.banrep);
   $("k-banrep-s").textContent = "E.A. · corte " + (T.corte || "—");
-  $("k-ibr").textContent = pct(T.ibr);
-  $("k-ibr-s").textContent = T.ibrAuto && T.ibrFecha
-    ? "automático · " + T.ibrFecha : "overnight · corte " + (T.corte || "—");
+  const ie = ibrEfectivo();
+  $("k-ibr").textContent = pct(ie.v);
+  $("k-ibr").style.opacity = ie.origen === "observado" ? "1" : ".72";
+  $("k-ibr-s").innerHTML = ie.origen === "observado"
+    ? (T.ibrAuto && T.ibrFecha ? "automático · " + T.ibrFecha : "overnight · corte " + (T.corte || "—"))
+    : ie.origen === "estimado_politica"
+      ? '<span style="color:var(--gold)">estimado desde la tasa BanRep</span>'
+      : "sin dato";
 
   const de = dtfEfectiva();
   $("k-dtf").textContent = pct(de.v);
@@ -1029,7 +1050,7 @@ function pintarTasas(){
   set("i-infl", T.infl);     set("i-ibc", T.ibc); set("i-usura", T.usura);
   set("i-corte", T.corte);
 
-  if(!$("rcop").dataset.tocado && Number.isFinite(T.ibr))  $("rcop").value = T.ibr.toFixed(2);
+  if(!$("rcop").dataset.tocado && ie.v != null) $("rcop").value = ie.v.toFixed(2);
   if(!$("rusd").dataset.tocado && Number.isFinite(T.sofr)) $("rusd").value = T.sofr.toFixed(2);
   $("rcop-h").textContent = T.ibrAuto && T.ibrFecha
     ? "automático · " + T.ibrFecha : "corte " + (T.corte||"—") + " · editable";
@@ -1123,7 +1144,7 @@ function guardarProy(){ ls.set(K.proy, P); }
 
 function fwd12(){
   if(!Number.isFinite(S.trm)) return null;
-  const rcop = num($("rcop").value) ?? (Number.isFinite(T.ibr) ? T.ibr : REF.ibr);
+  const rcop = num($("rcop").value) ?? (ibrEfectivo().v ?? REF.ibr);
   const rusd = num($("rusd").value) ?? (Number.isFinite(T.sofr) ? T.sofr : REF.sofr);
   return forward(S.trm, rcop, rusd, 365).f;
 }
