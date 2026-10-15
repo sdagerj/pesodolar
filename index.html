@@ -504,10 +504,15 @@ footer a{color:var(--t2);text-decoration:none;border-bottom:1px solid var(--bdr)
 
 /* ════════ CONFIGURACIÓN ════════ */
 const SOCRATA_TRM = "https://www.datos.gov.co/resource/32sa-8pi3.json";
-const NYFED_SOFR  = "https://markets.newyorkfed.org/api/rates/sofr/last/1.json";
+const NYFED_SOFR  = "https://markets.newyorkfed.org/api/rates/secured/sofr/last/1.json";
 const RESPALDO_FX = "https://open.er-api.com/v6/latest/USD";
-const IBR_SETS = ["ev8i-uzwt", "dj9f-u3if", "g4wt-pqf5"];
-const DTF_SETS = ["gtwv-4pxq"];
+/* El IBR no existe como tabla consultable en Datos Abiertos, y los
+   datasets de DTF que se publicitan no admiten consulta por API (403
+   "non-tabular"). Lo verificado y disponible es el promedio de CDT a 90
+   días, que es exactamente la definición de la DTF; lo calcula el job de
+   GitHub Actions y llega por datos.json. */
+const IBR_SETS = [];
+const DTF_SETS = [];
 
 const TENORS = [["3 meses",91],["6 meses",182],["12 meses",365],["18 meses",548]];
 const K = { trm:"pesodolar.trm.v3", tasas:"pesodolar.tasas.v3",
@@ -748,12 +753,12 @@ async function cargar({silencioso=false} = {}){
       T.sofr = r.valor; T.sofrFecha = r.fecha; T.sofrAuto = true;
       guardarTasas(); pintarTasas();
     }).catch(()=>{});
-    traerDeSets(IBR_SETS, [0.5,30]).then(r => {
+    if(IBR_SETS.length) traerDeSets(IBR_SETS, [0.5,30]).then(r => {
       T.ibr = r.valor; T.ibrFecha = r.fecha; T.ibrAuto = true;
       T.ts = T.ts || {}; T.ts.ibr = Date.parse(r.fecha + "T00:00:00Z") || Date.now();
       guardarTasas(); pintarTasas();
     }).catch(()=>{});
-    traerDeSets(DTF_SETS, [0.5,30]).then(r => {
+    if(DTF_SETS.length) traerDeSets(DTF_SETS, [0.5,30]).then(r => {
       T.dtf = r.valor; T.dtfFecha = r.fecha; T.dtfAuto = true;
       T.ts = T.ts || {}; T.ts.dtf = Date.parse(r.fecha + "T00:00:00Z") || Date.now();
       guardarTasas(); pintarTasas();
@@ -777,7 +782,9 @@ function aplicarDatosJSON(d){
     n++;
   };
   poner("ibr","ibr",[0.5,30]);
+  /* cdt90 y dtf son el mismo número: promedio de CDT a 90 días */
   poner("dtf","dtf",[0.5,30]);
+  if(!Number.isFinite(T.dtf)) poner("cdt90","dtf",[0.5,30]);
   poner("usura","usura",[10,60]);
   poner("ibc","ibc",[5,45]);
   poner("sofr","sofr",[0,15]);
@@ -1410,10 +1417,31 @@ async function correrDiagnostico(){
       resumir:r => `${nf(r.trm)} del ${r.fecha} · ${r.total} registros recibidos` },
     { nombre:"SOFR · NY Federal Reserve", correr:traerSOFR,
       resumir:r => `${r.valor}% del ${r.fecha}` },
-    { nombre:"IBR · Datos Abiertos", correr:() => traerDeSets(IBR_SETS,[0.5,30]),
-      resumir:r => `${r.valor}% del ${r.fecha} · dataset ${r.dataset}, columna "${r.campo}"` },
-    { nombre:"DTF · Datos Abiertos", correr:() => traerDeSets(DTF_SETS,[0.5,30]),
-      resumir:r => `${r.valor}% del ${r.fecha} · dataset ${r.dataset}, columna "${r.campo}"` },
+    { nombre:"IBC y usura · SFC", correr:async () => {
+        const rows = await jget("https://www.datos.gov.co/resource/pare-7x5i.json"
+          + "?$where=" + encodeURIComponent("upper(modalidad) like '%CONSUMO Y ORDINARIO%'")
+          + "&$order=" + encodeURIComponent("vigencia_desde DESC") + "&$limit=1", 12000);
+        const r = rows && rows[0];
+        const ibc = parseFloat(String(r && r.interes_bancario_corriente).replace("%",""));
+        if(!Number.isFinite(ibc)) throw new Error("no se pudo leer el IBC");
+        return { ibc, usura:Math.round(ibc*150)/100, fecha:String(r.vigencia_desde).slice(0,10) };
+      },
+      resumir:r => `IBC ${r.ibc}% · usura ${r.usura}% · vigente desde ${r.fecha}` },
+    { nombre:"CDT 90 días (equivale a DTF) · SFC", correr:async () => {
+        const f = await jget("https://www.datos.gov.co/resource/axk9-g2nh.json?$select="
+          + encodeURIComponent("max(fechacorte) AS f"), 12000);
+        const u = String(f && f[0] && f[0].f).slice(0,10);
+        const rows = await jget("https://www.datos.gov.co/resource/axk9-g2nh.json"
+          + "?$select=" + encodeURIComponent("tasa, monto")
+          + "&$where=" + encodeURIComponent(`fechacorte='${u}T00:00:00.000' AND monto > 0 AND upper(descripcion) like '%90 DIAS%'`)
+          + "&$limit=1000", 15000);
+        let sm = 0, sp = 0, n = 0;
+        (rows||[]).forEach(r => { const t = parseFloat(r.tasa), m = parseFloat(r.monto);
+          if(Number.isFinite(t) && Number.isFinite(m) && m > 0 && t > 0 && t < 60){ sm += m; sp += t*m; n++; } });
+        if(!n) throw new Error("sin emisiones de CDT a 90 días utilizables");
+        return { valor:Math.round(sp/sm*100)/100, fecha:u, n };
+      },
+      resumir:r => `${r.valor}% del ${r.fecha} · promedio ponderado de ${r.n} emisiones` },
     { nombre:"Respaldo de mercado · open.er-api.com", correr:traerRespaldo,
       resumir:r => `${nf(r.trm)} COP/USD` },
     { nombre:"datos.json (actualización automática)", correr:traerDatosJSON,
