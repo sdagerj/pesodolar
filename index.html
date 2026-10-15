@@ -321,9 +321,11 @@ footer a{color:var(--t2);text-decoration:none;border-bottom:1px solid var(--bdr)
       <div class="f"><label>Tasa BanRep % E.A.</label>
         <input type="number" id="i-banrep" step="0.25" inputmode="decimal"></div>
       <div class="f"><label>IBR overnight % E.A.</label>
-        <input type="number" id="i-ibr" step="0.01" inputmode="decimal"></div>
+        <input type="number" id="i-ibr" step="0.01" inputmode="decimal">
+        <div class="fhint" id="h-ibr"></div></div>
       <div class="f"><label>DTF % E.A.</label>
-        <input type="number" id="i-dtf" step="0.01" inputmode="decimal"></div>
+        <input type="number" id="i-dtf" step="0.01" inputmode="decimal">
+        <div class="fhint" id="h-dtf"></div></div>
       <div class="f"><label>Inflación anual %</label>
         <input type="number" id="i-infl" step="0.01" inputmode="decimal"></div>
       <div class="f"><label>IBC % E.A.</label>
@@ -418,10 +420,14 @@ footer a{color:var(--t2);text-decoration:none;border-bottom:1px solid var(--bdr)
   <!-- ═══════ 3 · PROYECCIONES TRM ═══════ -->
   <div class="pane" id="p-proy">
     <div class="note">
-      <b>Por qué esta tabla la llenas tú.</b> Los bancos y centros de estudio publican
-      sus proyecciones en informes PDF mensuales, sin API abierta. Aquí tienes las
-      fuentes con su enlace: abres, lees el número y lo anotas. Queda guardado y se
-      compara solo contra el forward de mercado.
+      <b>Tres formas de mirar hacia dónde va la TRM</b>, las tres calculadas solas
+      desde los datos que ya tiene la app.<br><br>
+      El <b>forward</b> es lo que cuesta asegurar el dólar hoy: sale del arbitraje
+      entre tasas y lo fija el mercado, no una opinión.<br>
+      La <b>paridad de poder adquisitivo</b> es el ancla de largo plazo: la moneda
+      con más inflación tiende a depreciarse en esa misma proporción.<br><br>
+      Cuando difieren, la diferencia es la que informa. Si quieres contrastar con
+      la proyección de algún banco, agrégala con el botón de abajo.
     </div>
 
     <div class="stitle">Cuadro comparativo</div>
@@ -1054,6 +1060,28 @@ function pintarTasas(){
     el.value = (v == null ? "" : v);
   };
   set("i-banrep", T.banrep); set("i-ibr", T.ibr); set("i-dtf", T.dtf);
+
+  const derivado = (idCampo, idPista, propio, efectivo, deQuien) => {
+    const inp = $(idCampo), pista = $(idPista);
+    if(!inp || !pista) return;
+    if(Number.isFinite(propio)){
+      inp.placeholder = "";
+      pista.textContent = "valor propio · bórralo para volver al estimado";
+    } else if(efectivo != null){
+      /* se muestra como marca de agua: se ve el número, pero se nota que
+         nadie lo escribió */
+      inp.placeholder = efectivo.toFixed(2).replace(".", ",");
+      pista.innerHTML = 'vacío a propósito: se estima en <b style="color:var(--gold)">'
+        + efectivo.toFixed(2).replace(".", ",") + '%</b> desde ' + deQuien
+        + '. Escribe aquí solo si tienes el dato real.';
+    } else {
+      inp.placeholder = "—";
+      pista.textContent = "sin dato y sin forma de estimarlo";
+    }
+  };
+  derivado("i-ibr", "h-ibr", T.ibr, ie.v, "la tasa BanRep");
+  derivado("i-dtf", "h-dtf", T.dtf, de.v,
+           de.origen === "observado" ? "la fuente oficial" : "el IBR");
   set("i-infl", T.infl);     set("i-ibc", T.ibc); set("i-usura", T.usura);
 
   if(!$("rcop").dataset.tocado && ie.v != null) $("rcop").value = ie.v.toFixed(2);
@@ -1140,20 +1168,45 @@ function pintarSenda(){
 }
 
 /* ════════ PINTAR · PROYECCIONES TRM ════════ */
+/* Todas las filas de arranque se calculan solas. Antes había cuatro filas
+   vacías esperando que alguien copiara números de informes en PDF, y una
+   tabla que siempre está vacía no sirve para nada. Quien quiera anotar la
+   proyección de un banco puede agregarla con el botón. */
 const FUENTES_DEF = [
-  { n:"Forward implícito 12M", u:"", calc:true },
-  { n:"BanRep · EME (consenso analistas)", u:"https://www.banrep.gov.co/es/contenidos/encuestas-expectativas-economicas", v:null },
-  { n:"Fedesarrollo · EOF", u:"https://www.fedesarrollo.org.co/encuestas/encuesta-de-opinion-financiera", v:null },
-  { n:"Bancolombia · Inv. Económicas", u:"https://www.grupobancolombia.com/investigaciones-economicas", v:null },
-  { n:"Corficolombiana · Research", u:"https://www.corficolombiana.com/investigaciones-economicas", v:null },
+  { n:"Forward implícito 12M", calc:"fwd12" },
+  { n:"Forward implícito 18M", calc:"fwd18" },
+  { n:"Paridad de poder adquisitivo 12M", calc:"ppp12" },
 ];
+/* Inflación de EE.UU. supuesta para la paridad de poder adquisitivo.
+   Es la meta de la Reserva Federal; se usa como ancla de largo plazo. */
+const INFL_US = 2.5;
 function guardarProy(){ ls.set(K.proy, P); }
 
-function fwd12(){
-  if(!Number.isFinite(S.trm)) return null;
-  const rcop = num($("rcop").value) ?? (ibrEfectivo().v ?? REF.ibr);
+function fwd12(){ return calcular("fwd12"); }
+
+/* Cada fila calculada sabe de dónde sale su número y lo explica sola. */
+function calcular(cual){
+  if(!cual || !Number.isFinite(S.trm)) return null;
+  const rcop = num($("rcop").value) ?? (ibrEfectivo().v ?? REF.banrep);
   const rusd = num($("rusd").value) ?? (Number.isFinite(T.sofr) ? T.sofr : REF.sofr);
-  return forward(S.trm, rcop, rusd, 365).f;
+  const infl = Number.isFinite(T.infl) ? T.infl : REF.infl;
+  if(cual === "fwd12") return forward(S.trm, rcop, rusd, 365).f;
+  if(cual === "fwd18") return forward(S.trm, rcop, rusd, 548).f;
+  /* Paridad de poder adquisitivo: la moneda con más inflación se deprecia
+     en esa misma proporción. Es el ancla de largo plazo, no de mercado. */
+  if(cual === "ppp12") return S.trm * (1 + infl/100) / (1 + INFL_US/100);
+  return null;
+}
+
+function explicar_fila(cual){
+  const rcop = num($("rcop").value) ?? (ibrEfectivo().v ?? REF.banrep);
+  const rusd = num($("rusd").value) ?? (Number.isFinite(T.sofr) ? T.sofr : REF.sofr);
+  const infl = Number.isFinite(T.infl) ? T.infl : REF.infl;
+  if(cual === "fwd12" || cual === "fwd18")
+    return `arbitraje: ${rcop.toFixed(2)}% COP contra ${rusd.toFixed(2)}% USD`;
+  if(cual === "ppp12")
+    return `inflación ${infl.toFixed(2)}% COL contra ${INFL_US.toFixed(1)}% EE.UU.`;
+  return "";
 }
 
 function pintarProyecciones(){
@@ -1161,12 +1214,12 @@ function pintarProyecciones(){
   const spot = S.trm, f12 = fwd12();
 
   cont.innerHTML = P.map((r,i) => {
-    const val = r.calc ? f12 : r.v;
+    const val = r.calc ? calcular(r.calc) : r.v;
     const diff = (Number.isFinite(val) && Number.isFinite(spot)) ? (val/spot - 1)*100 : null;
     const dcol = diff == null ? "var(--t3)" : diff > 0 ? "var(--red)" : "var(--grn)";
     const dtxt = diff == null ? "—" : (diff>=0?"+":"") + diff.toFixed(1) + "%";
     const link = r.u ? `<small><a href="${r.u}" target="_blank" rel="noopener">ver informe ↗</a></small>`
-               : (r.calc ? `<small>se calcula solo desde TRM y tasas</small>` : "");
+               : (r.calc ? `<small>${explicar_fila(r.calc)}</small>` : "<small>anotado por ti</small>");
     const input = r.calc
       ? `<input class="pin ro" value="${Number.isFinite(val) ? nf0(val) : "—"}" readonly tabindex="-1">`
       : `<input class="pin" type="number" inputmode="decimal" step="1" placeholder="—"
@@ -1184,7 +1237,7 @@ function pintarProyecciones(){
     P.splice(+b.dataset.d, 1); guardarProy(); pintarProyecciones();
   });
 
-  const n = P.filter(r => (r.calc && Number.isFinite(f12)) || Number.isFinite(r.v)).length;
+  const n = P.filter(r => Number.isFinite(r.calc ? calcular(r.calc) : r.v)).length;
   $("proy-n").textContent = n + " de " + P.length + " con dato";
   dibujarProy();
 }
@@ -1194,13 +1247,13 @@ function refrescarDiffs(){
   const f12 = fwd12();
   $("prows").querySelectorAll(".prow").forEach((row,i) => {
     const r = P[i]; if(!r) return;
-    const val = r.calc ? f12 : r.v;
+    const val = r.calc ? calcular(r.calc) : r.v;
     const diff = Number.isFinite(val) ? (val/spot - 1)*100 : null;
     const cell = row.children[2];
     cell.textContent = diff == null ? "—" : (diff>=0?"+":"") + diff.toFixed(1) + "%";
     cell.style.color = diff == null ? "var(--t3)" : diff > 0 ? "var(--red)" : "var(--grn)";
   });
-  const n = P.filter(r => (r.calc && Number.isFinite(f12)) || Number.isFinite(r.v)).length;
+  const n = P.filter(r => Number.isFinite(r.calc ? calcular(r.calc) : r.v)).length;
   $("proy-n").textContent = n + " de " + P.length + " con dato";
   dibujarProy();
 }
@@ -1351,7 +1404,7 @@ function dibujarProy(){
   const cv = $("ch-proy"); if(!cv) return;
   const { cx, w, h } = prep(cv, 170);
   const spot = S.trm, f12 = fwd12();
-  const items = P.map(r => ({ n:r.n, v:r.calc ? f12 : r.v, calc:!!r.calc }))
+  const items = P.map(r => ({ n:r.n, v:r.calc ? calcular(r.calc) : r.v, calc:!!r.calc }))
                  .filter(r => Number.isFinite(r.v));
   if(!items.length || !Number.isFinite(spot)){
     vacio(cx, w, h, Number.isFinite(spot) ? "Anota al menos una proyección" : "Sin TRM no hay comparación");
@@ -1540,7 +1593,11 @@ $("copy-diag").onclick = async () => {
 
   for(const [k,f] of Object.entries(REF_FECHAS)) if(!T[k+"Fecha"]) T[k+"Fecha"] = f;
 
-  P = ls.get(K.proy, null) || FUENTES_DEF.map(f => ({ n:f.n, u:f.u||"", v:f.v ?? null, calc:!!f.calc }));
+  P = (ls.get(K.proy, null) || FUENTES_DEF).map(f => ({
+    n: f.n, u: f.u || "", v: f.v ?? null,
+    /* true viene de versiones anteriores, cuando solo existía el forward */
+    calc: f.calc === true ? "fwd12" : (f.calc || null),
+  }));
 
   /* Parámetros del modelo al escenario base */
   $("i-tri").value = PARAMS_DEF.tri;
