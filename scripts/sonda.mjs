@@ -1,69 +1,71 @@
 #!/usr/bin/env node
-/** Buscar fuentes automáticas para tasa BanRep, IBR e inflación. */
+/** Descubrir qué servicios expone totoro.banrep.gov.co */
 
-async function get(url, ms = 20000, headers = {}) {
+async function get(url, ms = 15000) {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), ms);
   try {
     const r = await fetch(url, { signal: ac.signal,
-      headers: { "User-Agent": "Mozilla/5.0", Accept: "*/*", ...headers } });
+      headers: { "User-Agent": "Mozilla/5.0", Accept: "application/json,*/*" } });
     const txt = await r.text();
-    return { ok: r.ok, status: r.status, txt, tipo: r.headers.get("content-type") || "" };
-  } catch (e) { return { ok: false, status: 0, txt: String(e.message || e), tipo: "" };
+    return { ok: r.ok, status: r.status, txt, tipo: (r.headers.get("content-type")||"").split(";")[0] };
+  } catch (e) { return { ok:false, status:0, txt:String(e.message||e), tipo:"" };
   } finally { clearTimeout(t); }
 }
 
-console.log("═══ 1 · Catálogo de Datos Abiertos ═══");
-for (const q of ["tasa intervencion banco de la republica politica monetaria",
-                 "indice precios consumidor IPC variacion anual DANE",
-                 "inflacion mensual anual colombia",
-                 "indicador bancario de referencia IBR overnight"]) {
-  const u = "https://api.us.socrata.com/api/catalog/v1?domains=datos.gov.co"
-          + "&search_context=datos.gov.co&only=dataset&limit=6&q=" + encodeURIComponent(q);
+const BASE = "https://totoro.banrep.gov.co/estadisticas-economicas/rest/consultaDatosService/";
+
+const servicios = [
+  "consultaMercadoCambiario", "consultaTasaIntervencion", "consultaTasasIntervencion",
+  "consultaTasaPoliticaMonetaria", "consultaTasasInteres", "consultaIBR", "consultaIbr",
+  "consultaTasaIBR", "consultaIPC", "consultaInflacion", "consultaIndicePrecios",
+  "consultaDTF", "consultaTasasCaptacion", "consultaTRM", "consultaIndicadores",
+  "consultaSeries", "consultaDatos", "consultaTasaUsura",
+];
+
+console.log("═══ Servicios en totoro.banrep.gov.co ═══\n");
+const vivos = [];
+for (const s of servicios) {
+  const r = await get(BASE + s);
+  const marca = r.ok ? "✓" : "✗";
+  let extra = "";
+  if (r.ok) {
+    extra = ` · ${r.tipo} · ${r.txt.length}b · ${r.txt.slice(0,150).replace(/\s+/g," ")}`;
+    vivos.push(s);
+  } else {
+    extra = ` · HTTP ${r.status}`;
+  }
+  console.log(`  ${marca} ${s.padEnd(32)}${extra}`);
+}
+
+console.log("\n═══ Rutas de índice / catálogo ═══\n");
+for (const u of [
+  "https://totoro.banrep.gov.co/estadisticas-economicas/rest/",
+  "https://totoro.banrep.gov.co/estadisticas-economicas/rest/consultaDatosService",
+  "https://totoro.banrep.gov.co/estadisticas-economicas/rest/application.wadl",
+  "https://totoro.banrep.gov.co/estadisticas-economicas/catalogo",
+  "https://totoro.banrep.gov.co/estadisticas-economicas/",
+]) {
   const r = await get(u);
-  console.log(`\n  "${q}"`);
-  if (!r.ok) { console.log(`    fallo HTTP ${r.status}`); continue; }
+  console.log(`  ${r.ok?"✓":"✗"} ${u.replace("https://totoro.banrep.gov.co","")}  HTTP ${r.status} · ${r.tipo} · ${r.txt.length}b`);
+  if (r.ok && r.txt.length < 4000) console.log(`      ${r.txt.slice(0,500).replace(/\s+/g," ")}`);
+  else if (r.ok) {
+    // buscar nombres de servicio dentro del HTML/JS
+    const m = [...new Set((r.txt.match(/consulta[A-Z][A-Za-z]+/g) || []))];
+    if (m.length) console.log(`      menciona: ${m.slice(0,25).join(", ")}`);
+  }
+}
+
+console.log("\n═══ Forma del servicio que sí responde ═══\n");
+const r = await get(BASE + "consultaMercadoCambiario");
+if (r.ok) {
   try {
     const d = JSON.parse(r.txt);
-    const res = d.results || [];
-    if (!res.length) console.log("    sin resultados");
-    for (const x of res) {
-      const id = x.resource?.id, nom = x.resource?.name;
-      const p = await get(`https://www.datos.gov.co/resource/${id}.json?$limit=1`, 12000);
-      let marca = `HTTP ${p.status}`;
-      if (p.ok) { try { const rows = JSON.parse(p.txt);
-        marca = Array.isArray(rows) && rows[0] ? "✓ " + JSON.stringify(Object.keys(rows[0])).slice(0,150) : "vacío";
-      } catch { marca = "no JSON"; } }
-      console.log(`    ${id}  ${String(nom).slice(0,55)}`);
-      console.log(`       ${marca}`);
-    }
-  } catch { console.log("    respuesta no parseable"); }
-}
-
-console.log("\n\n═══ 2 · Servicios del Banco de la República ═══");
-const candidatos = [
-  "https://suameca.banrep.gov.co/buscador-de-series/rest/buscadorSeriesRestService/buscarSeries",
-  "https://suameca.banrep.gov.co/estadisticas-economicas/rest/consultaDatosService/consultaMercadoCambiario",
-  "https://totoro.banrep.gov.co/estadisticas-economicas/rest/consultaDatosService/consultaMercadoCambiario",
-  "https://www.banrep.gov.co/estadisticas/trm",
-  "https://suameca.banrep.gov.co/estadisticas-economicas/catalogo",
-];
-for (const u of candidatos) {
-  const r = await get(u, 15000);
-  console.log(`\n  ${u.replace("https://","").slice(0,75)}`);
-  console.log(`    HTTP ${r.status} · ${r.tipo.slice(0,40)} · ${r.txt.length} bytes`);
-  if (r.ok) console.log(`    ${r.txt.slice(0,220).replace(/\s+/g," ")}`);
-}
-
-console.log("\n\n═══ 3 · Otras fuentes de inflación y tasa de política ═══");
-const otras = [
-  ["Banco Mundial · inflación CO", "https://api.worldbank.org/v2/country/COL/indicator/FP.CPI.TOTL.ZG?format=json&per_page=3&mrv=3"],
-  ["Banco Mundial · tasa de interés real", "https://api.worldbank.org/v2/country/COL/indicator/FR.INR.RINR?format=json&mrv=2"],
-  ["DANE · índice IPC (archivo)", "https://www.dane.gov.co/files/operaciones/IPC/anex-IPC-IndiceInflacion-sep2026.xlsx"],
-];
-for (const [nombre, u] of otras) {
-  const r = await get(u, 15000);
-  console.log(`\n  ${nombre}`);
-  console.log(`    HTTP ${r.status} · ${r.txt.length} bytes`);
-  if (r.ok) console.log(`    ${r.txt.slice(0,300).replace(/\s+/g," ")}`);
+    console.log(`  tipo: ${Array.isArray(d) ? "lista de " + d.length : typeof d}`);
+    console.log(`  primeros 3: ${JSON.stringify(d.slice(0,3))}`);
+    console.log(`  últimos 3 : ${JSON.stringify(d.slice(-3))}`);
+    const ult = d[d.length-1];
+    if (Array.isArray(ult) && ult.length >= 2)
+      console.log(`  último punto: ${new Date(Number(ult[0])).toISOString()} → ${ult[1]}`);
+  } catch (e) { console.log("  no parseable:", e.message); }
 }
