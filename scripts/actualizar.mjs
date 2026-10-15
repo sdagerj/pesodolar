@@ -20,9 +20,26 @@ async function jget(url, ms = 20000) {
   const t = setTimeout(() => ac.abort(), ms);
   try {
     const r = await fetch(url, { signal: ac.signal, headers: { Accept: "application/json" } });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return await r.json();
+    const txt = await r.text();
+    if (!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText} — ${txt.slice(0,200)}`);
+    try { return JSON.parse(txt); }
+    catch (e) { throw new Error("respuesta no es JSON: " + txt.slice(0,200)); }
   } finally { clearTimeout(t); }
+}
+
+/* Sonda: describe lo que devuelve un dataset para poder ver sus columnas
+   reales en el registro del job, en vez de adivinarlas. */
+async function sondear(id) {
+  const url = `https://www.datos.gov.co/resource/${id}.json?$limit=2`;
+  try {
+    const rows = await jget(url, 15000);
+    if (!Array.isArray(rows)) return `  · ${id}: respondió pero no es una lista`;
+    if (!rows.length)        return `  · ${id}: lista vacía`;
+    return `  · ${id}: columnas = ${JSON.stringify(Object.keys(rows[0]))}\n`
+         + `             muestra  = ${JSON.stringify(rows[0]).slice(0,220)}`;
+  } catch (e) {
+    return `  · ${id}: FALLÓ — ${e.message}`;
+  }
 }
 
 /** Lee una serie de Socrata sin conocer sus columnas de antemano. */
@@ -47,18 +64,23 @@ function leerSerie(rows, rango, pistas = []) {
   return { valor: u.valor, fecha: u.fecha, campo: kValor };
 }
 
-async function deSets(sets, rango, pistas) {
+async function deSets(nombre, sets, rango, pistas) {
   for (const id of sets) {
     try {
-      const s = leerSerie(await jget(`https://www.datos.gov.co/resource/${id}.json?$limit=40`), rango, pistas);
+      const rows = await jget(`https://www.datos.gov.co/resource/${id}.json?$limit=40`);
+      const s = leerSerie(rows, rango, pistas);
       if (s) return { ...s, fuente: `datos.gov.co/${id}` };
-    } catch (e) { /* siguiente */ }
+      const cols = Array.isArray(rows) && rows[0] ? Object.keys(rows[0]) : [];
+      log(`     ${nombre}: ${id} respondió pero no se reconoció. Columnas: ${JSON.stringify(cols)}`);
+    } catch (e) {
+      log(`     ${nombre}: ${id} falló — ${e.message}`);
+    }
   }
   return null;
 }
 
-const traerIBR = () => deSets(["ev8i-uzwt","dj9f-u3if","g4wt-pqf5"], RANGO.ibr, [/overnight|nocturn/i, /\bibr\b/i]);
-const traerDTF = () => deSets(["gtwv-4pxq"], RANGO.dtf, [/dtf/i, /efectiv/i]);
+const traerIBR = () => deSets("IBR", ["ev8i-uzwt","dj9f-u3if","g4wt-pqf5"], RANGO.ibr, [/overnight|nocturn/i, /\bibr\b/i]);
+const traerDTF = () => deSets("DTF", ["gtwv-4pxq"], RANGO.dtf, [/dtf/i, /efectiv/i]);
 
 async function traerSOFR() {
   try {
@@ -66,7 +88,7 @@ async function traerSOFR() {
     const r = d?.refRates?.[0], v = parseFloat(r?.percentRate);
     if (Number.isFinite(v) && v >= RANGO.sofr[0] && v <= RANGO.sofr[1])
       return { valor: v, fecha: r.effectiveDate, fuente: "newyorkfed.org" };
-  } catch (e) {}
+  } catch (e) { log(`     SOFR falló — ${e.message}`); }
   return null;
 }
 
@@ -77,7 +99,7 @@ async function traerTRM() {
     const v = parseFloat(rows?.[0]?.valor);
     if (Number.isFinite(v) && v > RANGO.trm[0] && v < RANGO.trm[1])
       return { valor: v, fecha: String(rows[0].vigenciadesde).slice(0,10), fuente: "datos.gov.co/32sa-8pi3" };
-  } catch (e) {}
+  } catch (e) { log(`     TRM falló — ${e.message}`); }
   return null;
 }
 
@@ -107,7 +129,7 @@ async function traerUsuraIBC() {
       usura: usura != null ? { valor: usura, fecha: hoy, fuente: "superfinanciera.gov.co" } : null,
       ibc:   ibc   != null ? { valor: ibc,   fecha: hoy, fuente: "superfinanciera.gov.co" } : null,
     };
-  } catch (e) { return { usura: null, ibc: null }; }
+  } catch (e) { log(`     Usura/IBC falló — ${e.message}`); return { usura: null, ibc: null }; }
 }
 
 async function main() {
@@ -142,6 +164,14 @@ async function main() {
 
   await writeFile(SALIDA, JSON.stringify(salida, null, 2) + "\n");
   log("\ndatos.json escrito.");
+
+  // Sonda de esquemas: deja en el registro las columnas reales de cada
+  // dataset, para poder corregir los lectores con datos y no suponiendo.
+  if (process.env.SONDEAR === "1") {
+    log("\n── Sonda de esquemas ──");
+    for (const id of ["ev8i-uzwt","dj9f-u3if","g4wt-pqf5","gtwv-4pxq","32sa-8pi3"])
+      log(await sondear(id));
+  }
 
   if (Object.values(salida.estado).filter(s => s === "ok").length === 0) {
     console.error("Ninguna fuente respondió.");

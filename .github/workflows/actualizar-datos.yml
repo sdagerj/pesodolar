@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "30 14 * * 1-5"
   workflow_dispatch:
+    inputs:
+      sondear:
+        description: "Mostrar las columnas reales de cada dataset en el registro"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -19,6 +24,8 @@ jobs:
         with:
           node-version: "20"
       - name: Consultar fuentes
+        env:
+          SONDEAR: ${{ inputs.sondear && '1' || '0' }}
         run: node scripts/actualizar.mjs
       - name: Publicar si algo cambió
         run: |
