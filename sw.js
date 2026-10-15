@@ -8,7 +8,7 @@
 
    Sube el número de versión en cada cambio para que los dispositivos ya
    instalados descarten la copia vieja. */
-const CACHE = "pesodolar-v8";
+const CACHE = "pesodolar-v9";
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {

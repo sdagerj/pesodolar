@@ -330,8 +330,6 @@ footer a{color:var(--t2);text-decoration:none;border-bottom:1px solid var(--bdr)
         <input type="number" id="i-ibc" step="0.01" inputmode="decimal"></div>
       <div class="f"><label>Usura % E.A.</label>
         <input type="number" id="i-usura" step="0.01" inputmode="decimal"></div>
-      <div class="f"><label>Fecha de corte</label>
-        <input type="text" id="i-corte" placeholder="ago 2026"></div>
     </div>
     <button class="btn ghost sm" id="reset-tasas">Restaurar valores de referencia</button>
 
@@ -515,14 +513,19 @@ const IBR_SETS = [];
 const DTF_SETS = [];
 
 const TENORS = [["3 meses",91],["6 meses",182],["12 meses",365],["18 meses",548]];
-const K = { trm:"pesodolar.trm.v3", tasas:"pesodolar.tasas.v3",
-            proy:"pesodolar.proy.v3", theme:"pesodolar.theme" };
+const K = { trm:"pesodolar.trm.v4", tasas:"pesodolar.tasas.v4",
+            proy:"pesodolar.proy.v4", theme:"pesodolar.theme" };
 
 /* Valores de referencia con su fecha de corte real. La antigüedad se cuenta
    desde REF_TS, no desde que abres la app, para que un dato viejo se note. */
-const REF = { banrep:12.00, ibr:null, dtf:null, ibc:19.77,
-              usura:29.66, infl:6.14, sofr:3.62, corte:"ago 2026" };
-const REF_TS  = Date.parse("2026-08-11T00:00:00Z");
+/* Valores de arranque, por si no hay datos.json todavia. Cada tasa lleva
+   su propia fecha: no hay una "fecha de corte" unica, porque cada fuente
+   publica con su propio calendario. */
+const REF = { banrep:12.25, ibr:null, dtf:null, ibc:19.06,
+              usura:28.59, infl:6.29, sofr:3.88 };
+const REF_FECHAS = { banrep:"2026-10-01", ibc:"2026-10-01",
+                     usura:"2026-10-01", infl:"2026-09-30", sofr:"2026-10-14" };
+const REF_TS  = Date.parse("2026-10-01T00:00:00Z");
 const REF_TSS = { banrep:REF_TS, ibc:REF_TS, usura:REF_TS, infl:REF_TS };
 
 const VENCE = { banrep:50, ibr:10, dtf:12, usura:35, ibc:35, infl:35 };
@@ -1012,13 +1015,17 @@ function pintarEstado(){
 }
 
 function pintarTasas(){
+  /* Cada tasa muestra la fecha desde la que rige, no una comun */
+  const fechaDe = k => T[k + "Fecha"] || REF_FECHAS[k] || null;
+  const sello = (k, txt) => { const f = fechaDe(k); return txt + (f ? " · " + f : ""); };
+
   $("k-banrep").textContent = pct(T.banrep);
-  $("k-banrep-s").textContent = "E.A. · corte " + (T.corte || "—");
+  $("k-banrep-s").textContent = sello("banrep", "E.A. · rige desde");
   const ie = ibrEfectivo();
   $("k-ibr").textContent = pct(ie.v);
   $("k-ibr").style.opacity = ie.origen === "observado" ? "1" : ".72";
   $("k-ibr-s").innerHTML = ie.origen === "observado"
-    ? (T.ibrAuto && T.ibrFecha ? "automático · " + T.ibrFecha : "overnight · corte " + (T.corte || "—"))
+    ? (T.ibrAuto && T.ibrFecha ? "automático · " + T.ibrFecha : sello("ibr", "overnight"))
     : ie.origen === "estimado_politica"
       ? '<span style="color:var(--gold)">estimado desde la tasa BanRep</span>'
       : "sin dato";
@@ -1028,7 +1035,7 @@ function pintarTasas(){
   $("k-dtf").style.opacity = de.origen === "observado" ? "1" : ".72";
   $("k-dtf-s").innerHTML =
       de.origen === "observado"
-        ? (T.dtfAuto && T.dtfFecha ? "automático · " + T.dtfFecha : "semanal · corte " + (T.corte||"—"))
+        ? (T.dtfAuto && T.dtfFecha ? "automático · " + T.dtfFecha : sello("dtf", "semanal"))
     : de.origen === "estimado_ibr"
         ? '<span style="color:var(--gold)">estimado desde el IBR</span> · confírmalo'
     : de.origen === "estimado_politica"
@@ -1036,11 +1043,11 @@ function pintarTasas(){
         : "sin dato";
 
   $("k-infl").textContent = pct(T.infl);
-  $("k-infl-s").textContent = "IPC anual · corte " + (T.corte || "—");
+  $("k-infl-s").textContent = sello("infl", "IPC anual · dato a");
   $("k-ibc").textContent = pct(T.ibc);
-  $("k-ibc-s").textContent = "base legal de la usura";
+  $("k-ibc-s").textContent = sello("ibc", "base legal de la usura");
   $("k-usura").textContent = pct(T.usura);
-  $("k-usura-s").textContent = "consumo y ordinario · " + (T.corte || "—");
+  $("k-usura-s").textContent = sello("usura", "consumo y ordinario");
 
   const set = (id, v) => {
     const el = $(id); if(!el || document.activeElement === el) return;
@@ -1048,29 +1055,28 @@ function pintarTasas(){
   };
   set("i-banrep", T.banrep); set("i-ibr", T.ibr); set("i-dtf", T.dtf);
   set("i-infl", T.infl);     set("i-ibc", T.ibc); set("i-usura", T.usura);
-  set("i-corte", T.corte);
 
   if(!$("rcop").dataset.tocado && ie.v != null) $("rcop").value = ie.v.toFixed(2);
   if(!$("rusd").dataset.tocado && Number.isFinite(T.sofr)) $("rusd").value = T.sofr.toFixed(2);
-  $("rcop-h").textContent = T.ibrAuto && T.ibrFecha
-    ? "automático · " + T.ibrFecha : "corte " + (T.corte||"—") + " · editable";
+  $("rcop-h").textContent = ie.origen === "observado" && T.ibrAuto && T.ibrFecha
+    ? "automático · " + T.ibrFecha
+    : ie.origen === "estimado_politica" ? "estimado desde la tasa BanRep" : "editable";
   $("rusd-h").textContent = T.sofrAuto && T.sofrFecha
-    ? "NY Fed · " + T.sofrFecha : "corte " + (T.corte||"—") + " · editable";
+    ? "NY Fed · " + T.sofrFecha : (REF_FECHAS.sofr ? "corte " + REF_FECHAS.sofr : "editable");
 
   pintarEstado();
   pintarSenda();
   pintarForward();
 }
 
-["i-banrep","i-ibr","i-dtf","i-infl","i-ibc","i-usura","i-corte"].forEach(id => {
+["i-banrep","i-ibr","i-dtf","i-infl","i-ibc","i-usura"].forEach(id => {
   const el = $(id); if(!el) return;
   el.oninput = () => {
     const k = id.slice(2);
-    T[k] = (id === "i-corte") ? (el.value || "—") : (num(el.value) ?? T[k]);
-    if(id !== "i-corte"){
-      T.ts = T.ts || {}; T.ts[k] = Date.now();
-      T[k + "Auto"] = false;
-    }
+    T[k] = num(el.value) ?? T[k];
+    T.ts = T.ts || {}; T.ts[k] = Date.now();
+    T[k + "Auto"] = false;
+    T[k + "Fecha"] = new Date().toISOString().slice(0,10);
     guardarTasas();
     pintarTasas();
   };
@@ -1079,6 +1085,7 @@ function pintarTasas(){
 $("reset-tasas").onclick = () => {
   T = Object.assign({}, REF, { ts:Object.assign({}, REF_TSS),
                                sofr:T.sofr, sofrFecha:T.sofrFecha, sofrAuto:T.sofrAuto });
+  for(const [k,f] of Object.entries(REF_FECHAS)) if(!T[k+"Fecha"]) T[k+"Fecha"] = f;
   guardarTasas(); pintarTasas();
 };
 
@@ -1527,10 +1534,11 @@ $("copy-diag").onclick = async () => {
   T = Object.assign({}, REF, { ts:Object.assign({}, REF_TSS) });
   for(const [k,v] of Object.entries(guardado)){
     if(k === "ts" && v && typeof v === "object"){ T.ts = Object.assign({}, REF_TSS, v); continue; }
-    if(k === "corte" && typeof v === "string"){ T.corte = v; continue; }
     if(typeof v === "boolean" || typeof v === "string"){ T[k] = v; continue; }
     if(v === null || Number.isFinite(v)) T[k] = v;
   }
+
+  for(const [k,f] of Object.entries(REF_FECHAS)) if(!T[k+"Fecha"]) T[k+"Fecha"] = f;
 
   P = ls.get(K.proy, null) || FUENTES_DEF.map(f => ({ n:f.n, u:f.u||"", v:f.v ?? null, calc:!!f.calc }));
 
