@@ -1,111 +1,74 @@
 #!/usr/bin/env node
-/**
- * Sonda de descubrimiento. No escribe nada: solo averigua qué existe de
- * verdad y lo imprime, para corregir el script de actualización con hechos.
- *
- * Se corre desde GitHub Actions, que sí tiene salida a internet abierta.
- */
+/** Sonda enfocada: ver la forma exacta de los dos datasets que sí sirven. */
 
-async function get(url, ms = 20000) {
+async function jget(url, ms = 25000) {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), ms);
   try {
     const r = await fetch(url, { signal: ac.signal, headers: { Accept: "application/json" } });
     const txt = await r.text();
-    return { ok: r.ok, status: r.status, txt };
-  } catch (e) {
-    return { ok: false, status: 0, txt: String(e.message || e) };
+    if (!r.ok) throw new Error(`HTTP ${r.status} — ${txt.slice(0,150)}`);
+    return JSON.parse(txt);
   } finally { clearTimeout(t); }
 }
+const R = "https://www.datos.gov.co/resource/";
+const q = o => Object.entries(o).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join("&");
 
-/* ── 1 · Catálogo de Datos Abiertos ────────────────────────────────── */
-async function buscarCatalogo(q) {
-  const url = "https://api.us.socrata.com/api/catalog/v1"
-            + "?domains=datos.gov.co&search_context=datos.gov.co"
-            + "&only=dataset&limit=12&q=" + encodeURIComponent(q);
-  const r = await get(url);
-  console.log(`\n── Buscando "${q}" en el catálogo`);
-  if (!r.ok) { console.log(`   FALLÓ HTTP ${r.status}: ${r.txt.slice(0,160)}`); return []; }
-  let d;
-  try { d = JSON.parse(r.txt); } catch { console.log("   respuesta no es JSON"); return []; }
-  const res = (d.results || []).map(x => ({
-    id: x.resource?.id, nombre: x.resource?.name,
-    actualizado: String(x.resource?.updatedAt || "").slice(0,10),
-    tipo: x.resource?.type,
+/* ── TIBC: interés bancario corriente (base legal de la usura) ─────── */
+console.log("═══ pare-7x5i · Tasa de Interés Bancario Corriente ═══\n");
+try {
+  const mods = await jget(R + "pare-7x5i.json?" + q({
+    "$select": "modalidad, count(*) AS n, max(vigencia_desde) AS ultima",
+    "$group": "modalidad", "$order": "n DESC",
   }));
-  if (!res.length) console.log("   sin resultados");
-  res.forEach(x => console.log(`   ${x.id}  [${x.tipo}]  ${x.actualizado}  ${x.nombre}`));
-  return res;
-}
+  console.log("Modalidades disponibles:");
+  mods.forEach(m => console.log(`   ${String(m.n).padStart(4)} registros · última ${String(m.ultima).slice(0,10)} · ${m.modalidad}`));
+} catch (e) { console.log("  fallo agrupando:", e.message); }
 
-/* ── 2 · ¿Un dataset es consultable por la API? ─────────────────────── */
-async function probarDataset(id, nombre) {
-  const r = await get(`https://www.datos.gov.co/resource/${id}.json?$limit=2`);
-  if (!r.ok) {
-    let msg = r.txt.slice(0,120).replace(/\s+/g," ");
-    console.log(`   ✗ ${id}  HTTP ${r.status}  ${msg}`);
-    return null;
+try {
+  const ult = await jget(R + "pare-7x5i.json?" + q({
+    "$order": "vigencia_desde DESC", "$limit": "8",
+  }));
+  console.log("\nÚltimos 8 registros (cualquier modalidad):");
+  ult.forEach(r => console.log(`   ${String(r.vigencia_desde).slice(0,10)} → ${String(r.vigencia_hasta).slice(0,10)}  `
+    + `${String(r.interes_bancario_corriente).padStart(8)}  ${r.modalidad}`));
+} catch (e) { console.log("  fallo:", e.message); }
+
+/* ── Captación: de aquí sale el promedio de CDT ─────────────────────── */
+console.log("\n\n═══ axk9-g2nh · Tasas de captación / mercado monetario ═══\n");
+try {
+  const u = await jget(R + "axk9-g2nh.json?" + q({
+    "$select": "nombre_unidad_de_captura, count(*) AS n, max(fechacorte) AS ultima",
+    "$group": "nombre_unidad_de_captura", "$order": "n DESC", "$limit": "15",
+  }));
+  console.log("Unidades de captura:");
+  u.forEach(x => console.log(`   ${String(x.n).padStart(6)} · última ${String(x.ultima).slice(0,10)} · ${x.nombre_unidad_de_captura}`));
+} catch (e) { console.log("  fallo:", e.message); }
+
+try {
+  const f = await jget(R + "axk9-g2nh.json?" + q({ "$select":"max(fechacorte) AS f" }));
+  const ultima = String(f[0].f).slice(0,10);
+  console.log(`\nÚltima fecha de corte: ${ultima}`);
+
+  const desc = await jget(R + "axk9-g2nh.json?" + q({
+    "$select": "descripcion, count(*) AS n, sum(monto) AS monto",
+    "$where": `fechacorte='${ultima}T00:00:00.000'`,
+    "$group": "descripcion", "$order": "monto DESC", "$limit": "14",
+  }));
+  console.log("\nDescripciones en esa fecha (por monto):");
+  desc.forEach(d => console.log(`   ${String(d.n).padStart(4)} · ${Number(d.monto||0).toExponential(3).padStart(11)} · ${d.descripcion}`));
+
+  // Promedio ponderado de CDT a 90 días, que es lo que mide la DTF
+  const cdt = await jget(R + "axk9-g2nh.json?" + q({
+    "$where": `fechacorte='${ultima}T00:00:00.000' AND monto > 0 AND upper(descripcion) like '%90%'`,
+    "$select": "descripcion, tasa, monto", "$limit": "400",
+  }));
+  console.log(`\nRegistros que mencionan 90 (días): ${cdt.length}`);
+  if (cdt.length) {
+    let sm = 0, sp = 0;
+    cdt.forEach(r => { const t = parseFloat(r.tasa), m = parseFloat(r.monto);
+                       if (isFinite(t) && isFinite(m) && m > 0) { sm += m; sp += t*m; } });
+    console.log(`   promedio ponderado por monto = ${(sp/sm).toFixed(4)}`);
+    console.log(`   ejemplos: ${cdt.slice(0,3).map(r => `${r.descripcion}=${r.tasa}`).join(" | ")}`);
   }
-  let rows;
-  try { rows = JSON.parse(r.txt); } catch { console.log(`   ✗ ${id}  no es JSON`); return null; }
-  if (!Array.isArray(rows) || !rows.length) { console.log(`   ✗ ${id}  lista vacía`); return null; }
-  console.log(`   ✓ ${id}  ${nombre || ""}`);
-  console.log(`       columnas: ${JSON.stringify(Object.keys(rows[0]))}`);
-  console.log(`       muestra : ${JSON.stringify(rows[0]).slice(0,200)}`);
-  return { id, columnas: Object.keys(rows[0]), muestra: rows[0] };
-}
-
-/* ── 3 · SOFR: probar varias formas de la URL ───────────────────────── */
-async function probarSOFR() {
-  const urls = [
-    "https://markets.newyorkfed.org/api/rates/secured/sofr/last/1.json",
-    "https://markets.newyorkfed.org/api/rates/all/latest.json",
-    "https://markets.newyorkfed.org/api/rates/unsecured/effr/last/1.json",
-    "https://markets.newyorkfed.org/api/rates/sofr/last/1.json",
-  ];
-  console.log("\n── SOFR · NY Federal Reserve");
-  for (const u of urls) {
-    const r = await get(u, 15000);
-    const corto = u.replace("https://markets.newyorkfed.org/api/rates/", "…/");
-    if (!r.ok) { console.log(`   ✗ ${corto}  HTTP ${r.status}  ${r.txt.slice(0,90).replace(/\s+/g," ")}`); continue; }
-    console.log(`   ✓ ${corto}`);
-    console.log(`       ${r.txt.slice(0,260).replace(/\s+/g," ")}`);
-  }
-}
-
-/* ── 4 · Respaldo de tipo de cambio ─────────────────────────────────── */
-async function probarRespaldo() {
-  console.log("\n── Respaldo de tipo de cambio");
-  for (const u of ["https://open.er-api.com/v6/latest/USD",
-                   "https://api.frankfurter.app/latest?from=USD&to=COP"]) {
-    const r = await get(u, 15000);
-    if (!r.ok) { console.log(`   ✗ ${u}  HTTP ${r.status}`); continue; }
-    let v = "?";
-    try { const d = JSON.parse(r.txt); v = d?.rates?.COP ?? "sin COP"; } catch {}
-    console.log(`   ✓ ${u}  →  COP = ${v}`);
-  }
-}
-
-/* ── main ───────────────────────────────────────────────────────────── */
-console.log("═══ SONDA DE DESCUBRIMIENTO ═══");
-
-const vistos = new Map();
-for (const q of ["IBR indicador bancario de referencia", "DTF deposito termino fijo",
-                 "tasa de interes de politica monetaria banco republica",
-                 "indice de precios al consumidor IPC inflacion",
-                 "tasa de usura interes bancario corriente"]) {
-  for (const r of await buscarCatalogo(q)) if (r.id) vistos.set(r.id, r.nombre);
-}
-
-console.log(`\n── Probando cuáles de los ${vistos.size} datasets son consultables`);
-const buenos = [];
-for (const [id, nombre] of vistos) {
-  const r = await probarDataset(id, nombre);
-  if (r) buenos.push({ ...r, nombre });
-}
-
-await probarSOFR();
-await probarRespaldo();
-
-console.log(`\n═══ RESUMEN: ${buenos.length} datasets consultables ═══`);
-buenos.forEach(b => console.log(`  ${b.id}  ${b.nombre}`));
+} catch (e) { console.log("  fallo:", e.message); }
