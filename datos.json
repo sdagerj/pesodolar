@@ -1,14 +1,14 @@
 {
-  "actualizado": "2026-10-16T18:17:20.637Z",
+  "actualizado": "2026-10-19T20:07:19.071Z",
   "tasas": {
     "trm": {
-      "valor": 3170.46,
-      "fecha": "2026-10-16",
+      "valor": 3174.67,
+      "fecha": "2026-10-17",
       "fuente": "datos.gov.co/32sa-8pi3"
     },
     "sofr": {
-      "valor": 3.89,
-      "fecha": "2026-10-15",
+      "valor": 3.88,
+      "fecha": "2026-10-16",
       "fuente": "newyorkfed.org"
     },
     "ibc": {
@@ -25,16 +25,16 @@
       "nota": "IBC x 1,5 (regla legal)"
     },
     "cdt90": {
-      "valor": 10.6412,
-      "fecha": "2026-10-14",
+      "valor": 10.9992,
+      "fecha": "2026-10-16",
       "fuente": "datos.gov.co/axk9-g2nh · SFC",
-      "nota": "promedio ponderado por monto de 42 emisiones de CDT a 90 dias"
+      "nota": "promedio ponderado por monto de 2 emisiones de CDT a 90 dias"
     },
     "dtf": {
-      "valor": 10.6412,
-      "fecha": "2026-10-14",
+      "valor": 10.9992,
+      "fecha": "2026-10-16",
       "fuente": "datos.gov.co/axk9-g2nh · SFC",
-      "nota": "promedio ponderado por monto de 42 emisiones de CDT a 90 dias"
+      "nota": "promedio ponderado por monto de 2 emisiones de CDT a 90 dias"
     },
     "banrep": {
       "valor": 12.25,
