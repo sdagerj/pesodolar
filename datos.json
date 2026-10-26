@@ -1,14 +1,14 @@
 {
-  "actualizado": "2026-10-23T18:38:34.306Z",
+  "actualizado": "2026-10-26T20:04:44.445Z",
   "tasas": {
     "trm": {
-      "valor": 3185.01,
-      "fecha": "2026-10-23",
+      "valor": 3158.43,
+      "fecha": "2026-10-24",
       "fuente": "datos.gov.co/32sa-8pi3"
     },
     "sofr": {
-      "valor": 3.9,
-      "fecha": "2026-10-22",
+      "valor": 3.92,
+      "fecha": "2026-10-23",
       "fuente": "newyorkfed.org"
     },
     "ibc": {
@@ -52,8 +52,8 @@
   "estado": {
     "trm": "ok",
     "sofr": "ok",
-    "ibc": "ok",
-    "usura": "ok",
+    "ibc": "sin_actualizar",
+    "usura": "sin_actualizar",
     "cdt90": "ok",
     "dtf": "ok",
     "banrep": "manual",
