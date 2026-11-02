@@ -1,40 +1,40 @@
 {
-  "actualizado": "2026-10-30T19:37:03.764Z",
+  "actualizado": "2026-11-02T22:51:19.177Z",
   "tasas": {
     "trm": {
-      "valor": 3166.91,
-      "fecha": "2026-10-30",
+      "valor": 3182.99,
+      "fecha": "2026-10-31",
       "fuente": "datos.gov.co/32sa-8pi3"
     },
     "sofr": {
-      "valor": 3.94,
-      "fecha": "2026-10-29",
+      "valor": 3.95,
+      "fecha": "2026-10-30",
       "fuente": "newyorkfed.org"
     },
     "ibc": {
-      "valor": 19.06,
-      "fecha": "2026-10-01",
+      "valor": 18.89,
+      "fecha": "2026-11-01",
       "fuente": "datos.gov.co/pare-7x5i · SFC",
       "modalidad": "CONSUMO Y ORDINARIO",
-      "vigencia_hasta": "2026-10-31"
+      "vigencia_hasta": "2026-11-30"
     },
     "usura": {
-      "valor": 28.59,
-      "fecha": "2026-10-01",
+      "valor": 28.34,
+      "fecha": "2026-11-01",
       "fuente": "datos.gov.co/pare-7x5i · SFC",
       "nota": "IBC x 1,5 (regla legal)"
     },
     "cdt90": {
-      "valor": 10.8536,
-      "fecha": "2026-10-28",
+      "valor": 11.552,
+      "fecha": "2026-10-30",
       "fuente": "datos.gov.co/axk9-g2nh · SFC",
-      "nota": "promedio ponderado por monto de 42 emisiones de CDT a 90 dias"
+      "nota": "promedio ponderado por monto de 3 emisiones de CDT a 90 dias"
     },
     "dtf": {
-      "valor": 10.8536,
-      "fecha": "2026-10-28",
+      "valor": 11.552,
+      "fecha": "2026-10-30",
       "fuente": "datos.gov.co/axk9-g2nh · SFC",
-      "nota": "promedio ponderado por monto de 42 emisiones de CDT a 90 dias"
+      "nota": "promedio ponderado por monto de 3 emisiones de CDT a 90 dias"
     },
     "banrep": {
       "valor": 12.25,
