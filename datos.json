@@ -1,14 +1,14 @@
 {
-  "actualizado": "2026-11-16T23:28:57.673Z",
+  "actualizado": "2026-11-17T22:34:45.818Z",
   "tasas": {
     "trm": {
-      "valor": 3316.7,
-      "fecha": "2026-11-14",
+      "valor": 3309.55,
+      "fecha": "2026-11-18",
       "fuente": "datos.gov.co/32sa-8pi3"
     },
     "sofr": {
-      "valor": 3.9,
-      "fecha": "2026-11-13",
+      "valor": 3.93,
+      "fecha": "2026-11-16",
       "fuente": "newyorkfed.org"
     },
     "ibc": {
