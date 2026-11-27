@@ -1,14 +1,14 @@
 {
-  "actualizado": "2026-11-26T23:13:27.049Z",
+  "actualizado": "2026-11-27T22:52:23.598Z",
   "tasas": {
     "trm": {
-      "valor": 3630.89,
-      "fecha": "2026-11-26",
+      "valor": 3498.46,
+      "fecha": "2026-11-28",
       "fuente": "datos.gov.co/32sa-8pi3"
     },
     "sofr": {
-      "valor": 3.94,
-      "fecha": "2026-11-24",
+      "valor": 3.95,
+      "fecha": "2026-11-25",
       "fuente": "newyorkfed.org"
     },
     "ibc": {
@@ -25,16 +25,16 @@
       "nota": "IBC x 1,5 (regla legal)"
     },
     "cdt90": {
-      "valor": 10.5475,
-      "fecha": "2026-11-24",
+      "valor": 10.7247,
+      "fecha": "2026-11-25",
       "fuente": "datos.gov.co/axk9-g2nh · SFC",
-      "nota": "promedio ponderado por monto de 41 emisiones de CDT a 90 dias"
+      "nota": "promedio ponderado por monto de 40 emisiones de CDT a 90 dias"
     },
     "dtf": {
-      "valor": 10.5475,
-      "fecha": "2026-11-24",
+      "valor": 10.7247,
+      "fecha": "2026-11-25",
       "fuente": "datos.gov.co/axk9-g2nh · SFC",
-      "nota": "promedio ponderado por monto de 41 emisiones de CDT a 90 dias"
+      "nota": "promedio ponderado por monto de 40 emisiones de CDT a 90 dias"
     },
     "banrep": {
       "valor": 12.25,
@@ -52,8 +52,8 @@
   "estado": {
     "trm": "ok",
     "sofr": "ok",
-    "ibc": "ok",
-    "usura": "ok",
+    "ibc": "sin_actualizar",
+    "usura": "sin_actualizar",
     "cdt90": "ok",
     "dtf": "ok",
     "banrep": "manual",
